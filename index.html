@@ -1,0 +1,1246 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Transfert Quest – Apprendre le FTP et le SFTP</title>
+<style>
+/* ===== 1. Variables et bases ===== */
+:root{--p:#4f46e5;--pd:#4338ca;--ps:#e0e7ff;--ink:#1e1b4b;--tx:#334155;--mu:#64748b;--ok:#16a34a;--oks:#dcfce7;--ko:#dc2626;--kos:#fee2e2;--ac:#f59e0b;--acs:#fff7ed;--sh:0 8px 24px rgba(30,27,75,.08);
+/* Pointeurs de souris en forme de mini fichier (SVG intégré, aucune ressource externe).
+   --cur  : fichier blanc (pointeur normal) ; --curp : fichier indigo (élément cliquable).
+   Le point actif est le coin supérieur gauche du fichier. Si le navigateur ne gère pas
+   ce format, il revient au pointeur habituel (auto / pointer). */
+--cur:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='28' viewBox='0 0 24 28'%3E%3Cpath d='M2 1h13l7 7v18H2z' fill='white' stroke='%231e1b4b' stroke-width='2' stroke-linejoin='round'/%3E%3Cpath d='M15 1v7h7' fill='%23c7d2fe' stroke='%231e1b4b' stroke-width='2' stroke-linejoin='round'/%3E%3Cpath d='M6 14h10M6 18h10M6 22h6' stroke='%234f46e5' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E") 2 1,auto;
+--curp:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='28' viewBox='0 0 24 28'%3E%3Cpath d='M2 1h13l7 7v18H2z' fill='%234f46e5' stroke='%231e1b4b' stroke-width='2' stroke-linejoin='round'/%3E%3Cpath d='M15 1v7h7' fill='%23a5b4fc' stroke='%231e1b4b' stroke-width='2' stroke-linejoin='round'/%3E%3Cpath d='M6 14h10M6 18h10M6 22h6' stroke='white' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E") 2 1,pointer}
+*{box-sizing:border-box}
+html{cursor:var(--cur)}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:#f4f6ff;color:var(--tx);line-height:1.6}
+input{cursor:text}
+input[type=checkbox]{cursor:var(--curp)}
+h1,h2,h3,h4{color:var(--ink);line-height:1.25;margin:0 0 .6em}
+h1{font-size:1.7rem}h2{font-size:1.35rem}h3{font-size:1.08rem;margin-top:1em}
+p{margin:0 0 .85em}
+button{font:inherit}
+code{background:var(--ps);color:var(--pd);padding:1px 6px;border-radius:6px;font-family:Consolas,monospace;font-size:.9em}
+/* ===== 2. En-tête et navigation ===== */
+.top{position:sticky;top:0;z-index:50;box-shadow:0 2px 10px rgba(0,0,0,.1)}
+.bar{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;padding:10px 18px;background:linear-gradient(90deg,#4338ca,#8b5cf6);color:#fff}
+.brand{font-weight:800;font-size:1.15rem}
+.stats{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.pill{background:rgba(255,255,255,.2);padding:4px 12px;border-radius:99px;font-size:.9rem;display:inline-block}
+.pill:empty{display:none}
+.ib{background:rgba(255,255,255,.2);border:0;color:#fff;border-radius:10px;padding:6px 10px;cursor:var(--curp)}
+.ib:hover{background:rgba(255,255,255,.35)}
+nav{display:flex;gap:4px;overflow-x:auto;padding:6px 10px;background:#fff}
+.nb{border:0;background:none;padding:8px 12px;border-radius:10px;font-weight:600;font-size:.9rem;color:var(--ink);cursor:var(--curp);white-space:nowrap}
+.nb:hover{background:#f1f5f9}.nb.on{background:var(--ps);color:var(--p)}.nb.lk{opacity:.5}
+/* ===== 3. Mise en page ===== */
+main{max-width:980px;margin:0 auto;padding:22px 14px 190px}
+.sec{display:none}.sec.on{display:block;animation:fi .3s}
+.card{background:#fff;border-radius:18px;box-shadow:var(--sh);padding:22px;margin-bottom:18px}
+.hero{background:linear-gradient(135deg,#eef2ff,#fdf2f8)}
+.lead{font-size:1.07rem}.sm{font-size:.87rem}.mu{color:var(--mu)}.c{text-align:center}.hid{display:none!important}
+.eye{text-transform:uppercase;letter-spacing:.08em;font-size:.76rem;font-weight:700;color:var(--p);margin-bottom:.3em}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.jc{justify-content:center}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.huge{font-size:3.5rem}
+.inp{flex:1;min-width:200px;padding:10px 14px;border:2px solid #cbd5e1;border-radius:12px;font:inherit}
+.inp:focus{outline:none;border-color:var(--p)}
+.lbl{display:block;font-weight:700;color:var(--ink);margin:.5em 0 .4em}
+.note{padding:11px 15px;border-radius:12px;margin-bottom:14px;font-weight:600}
+.note.okn{background:var(--oks);color:#166534}.note.warn{background:var(--acs);color:#9a3412}
+.plist{list-style:none;padding:0;margin:0}.plist li{padding:6px 0;border-bottom:1px dashed #e2e8f0}
+.btn{display:inline-flex;align-items:center;gap:6px;border:0;border-radius:12px;padding:10px 18px;font-weight:700;cursor:var(--curp);background:var(--p);color:#fff;transition:transform .1s,background .2s}
+.btn:hover{background:var(--pd)}.btn:active{transform:scale(.97)}.btn:disabled{opacity:.45;cursor:var(--cur)}
+.btn.gh{background:transparent;color:var(--p);border:2px solid var(--ps)}
+.btn.soft{background:var(--ps);color:var(--p)}
+.btn.green{background:var(--ok)}.btn.red{background:var(--ko)}
+.btn.big{min-width:170px;justify-content:center;font-size:1.05rem;padding:14px 20px}
+/* Options de réponse et retours */
+.opt{display:block;width:100%;text-align:left;padding:11px 15px;margin:8px 0;border:2px solid #e2e8f0;border-radius:12px;background:#fff;cursor:var(--curp);color:var(--ink)}
+.opt:hover:not(:disabled){border-color:#818cf8;background:#f8faff}.opt:disabled{cursor:var(--cur)}
+.opt.good{border-color:var(--ok);background:var(--oks)}.opt.bad{border-color:var(--ko);background:var(--kos)}
+.fb{display:none;margin-top:12px;padding:12px 15px;border-radius:12px}
+.fb.show{display:block;animation:fi .3s}.fb.good{background:var(--oks);border-left:5px solid var(--ok)}.fb.bad{background:var(--kos);border-left:5px solid var(--ko)}
+.term{background:none;border:0;padding:0;color:var(--p);border-bottom:2px dotted var(--p);cursor:var(--curp);font-weight:600}
+.term:hover{background:var(--ps)}
+.ana{background:var(--acs);border-left:5px solid var(--ac);padding:11px 15px;border-radius:10px;margin:12px 0}
+.ins{margin:14px 0 0;padding:13px 17px;background:var(--ps);border-left:5px solid var(--p);border-radius:10px}
+.prog{height:10px;background:#e2e8f0;border-radius:99px;overflow:hidden;margin:6px 0 12px}
+.prog div{height:100%;background:linear-gradient(90deg,#6366f1,#a855f7);transition:width .5s}
+.dots{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.dot{width:34px;height:34px;border-radius:50%;border:2px solid #cbd5e1;background:#fff;font-weight:700;cursor:var(--curp);color:var(--mu)}
+.dot.dn{background:var(--oks);border-color:var(--ok);color:var(--ok)}.dot.cur{background:var(--p);border-color:var(--p);color:#fff}.dot:disabled{opacity:.5;cursor:var(--cur)}
+.qbox{margin-top:20px;padding:18px;border-radius:14px;background:#fafaff;border:2px solid var(--ps)}
+.nav2{display:flex;justify-content:space-between;gap:10px;margin-top:18px;flex-wrap:wrap}
+.tbl{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.92rem;margin:10px 0}
+th,td{padding:9px 11px;border-bottom:1px solid #e2e8f0;text-align:left;vertical-align:top}
+thead th{background:var(--ps);color:var(--ink)}
+pre.log{background:#0f172a;color:#e2e8f0;padding:13px;border-radius:12px;overflow-x:auto;font-size:.84rem;margin:12px 0;white-space:pre}
+details summary{cursor:var(--curp);font-weight:700;color:var(--ink)}
+/* Bonus rapidité : petite jauge qui se vide en FAST_S secondes */
+.spd{margin:4px 0 10px;font-size:.84rem;color:var(--mu)}
+.sbar{height:5px;background:#e2e8f0;border-radius:99px;overflow:hidden;margin-top:4px}
+.sbar div{height:100%;width:100%;background:linear-gradient(90deg,#f59e0b,#facc15)}
+.spd.win{color:#b45309;font-weight:700}
+.spd.off .sbar div{background:#cbd5e1}
+/* Chrono du quiz final (à partir de la question QUIZ_CHRONO_FROM) */
+.qchr{margin:4px 0 14px;padding:10px 14px;border-radius:12px;background:#fff7ed;border:2px solid #fed7aa}
+.th{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;font-size:1.1rem;font-weight:700;color:var(--ink)}
+.th small{font-size:.82rem;font-weight:600;color:var(--mu)}
+.tbar{height:12px;background:#e2e8f0;border-radius:99px;overflow:hidden;margin-top:8px}
+.tfill{height:100%;width:100%;background:var(--ok);transition:width .1s linear}
+.tfill.mid{background:var(--ac)}.tfill.low{background:var(--ko)}
+.score{font-size:3rem;font-weight:800;color:var(--p);margin:0}
+/* ===== 4. Démos ===== */
+.demo{background:#f8fafc;border:2px dashed #cbd5e1;border-radius:14px;padding:16px;margin:16px 0}
+.net{display:flex;align-items:center;gap:10px;margin:8px 0}
+.node{font-size:2.3rem;text-align:center;min-width:80px}.node span{display:block;font-size:.76rem;color:var(--mu);line-height:1.3}
+.wire{flex:1;position:relative;height:70px;border-bottom:4px dotted #94a3b8}
+.spy{position:absolute;left:50%;top:0;transform:translateX(-50%);font-size:1.7rem}
+.pkt{position:absolute;bottom:6px;left:0;background:#fff;border:2px solid #6366f1;border-radius:8px;padding:2px 8px;font-size:.8rem;white-space:nowrap;font-family:Consolas,monospace;opacity:0}
+.pkt.clr{border-color:var(--ko);color:var(--ko)}.pkt.enc{border-color:var(--ok);color:var(--ok)}
+.pkt.r{animation:toR 1.3s ease-in-out forwards}.pkt.l{animation:toL 1.3s ease-in-out forwards}
+.scr{background:#0f172a;color:#86efac;font-family:Consolas,monospace;border-radius:10px;padding:12px;min-height:100px;font-size:.85rem;word-break:break-all;margin-top:12px}
+.mis{background:var(--acs);border-radius:12px;padding:14px;margin-top:14px}
+/* ===== 5. Reproductions de l'interface FileZilla ===== */
+.fz{position:relative;border:1px solid #9ca3af;border-radius:8px;overflow:hidden;background:#f0f0f0;font-family:"Segoe UI",Tahoma,Arial,sans-serif;font-size:12.5px;color:#111;margin:12px 0;box-shadow:0 6px 18px rgba(0,0,0,.15)}
+.fz-title{display:flex;justify-content:space-between;align-items:center;background:#fff;padding:5px 10px;border-bottom:1px solid #d1d5db;font-weight:600}
+.fzl{background:#b91c1c;color:#fff;border-radius:3px;padding:0 4px;margin-right:4px;font-size:11px}
+.fz-ctl{letter-spacing:8px;color:#555}
+.fz-menu{background:#fff;padding:3px 10px;border-bottom:1px solid #d1d5db;word-spacing:12px;color:#333}
+.fz-qc{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;padding:7px 10px;border-bottom:1px solid #d1d5db}
+.fz-qc label{display:flex;align-items:center;gap:4px;white-space:nowrap}
+.fz input{font:inherit;padding:2px 5px;border:1px solid #9ca3af;border-radius:2px;width:150px;background:#fff;color:#111}
+.fz input.s{width:52px}
+.fz-b{display:inline-block;font:inherit;font-size:12.5px;padding:3px 12px;border:1px solid #9ca3af;border-radius:3px;background:linear-gradient(#fff,#e5e7eb);cursor:var(--curp);color:#111}
+.fz-b.pri{border-color:#2563eb}.fz-b:disabled{opacity:.5;cursor:var(--cur)}
+.fz-log{background:#fff;height:100px;overflow-y:auto;padding:4px 8px;border-bottom:1px solid #d1d5db;font-family:Consolas,monospace;font-size:11.5px}
+.fz-log .er{color:#dc2626}.fz-log .rp{color:#15803d}
+.fz-panes{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px}
+.fz-pane{background:#fff;border:1px solid #d1d5db;display:flex;flex-direction:column;min-height:180px}
+.fz-path{padding:4px 6px;border-bottom:1px solid #e5e7eb;background:#f9fafb;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fz-row{display:grid;grid-template-columns:1fr 100px;padding:2px 6px;user-select:none}
+.fz-head{font-weight:600;background:#f3f4f6;border-bottom:1px solid #e5e7eb}
+.fz-list{flex:1;overflow-y:auto}
+.fz-list .fz-row{cursor:var(--curp)}.fz-list .fz-row:hover{background:#e0f2fe}.fz-list .fz-row.sel{background:#2563eb;color:#fff}
+.fz-act{padding:4px 6px;border-top:1px solid #e5e7eb}
+.fz-queue{background:#fff;margin:0 4px 4px;border:1px solid #d1d5db}
+.fz-tabs{display:flex;flex-wrap:wrap;background:#f3f4f6;border-bottom:1px solid #d1d5db}
+.fz-tabs span{padding:3px 10px;border-right:1px solid #e5e7eb}.fz-tabs span.on{background:#fff;font-weight:600}
+.fz-ql{min-height:40px;max-height:90px;overflow-y:auto;padding:3px 8px;font-size:11.5px}
+.fz-dlg{position:absolute;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;padding:10px;z-index:5}
+.fz-dlg>div{background:#f0f0f0;border:1px solid #6b7280;max-width:450px;width:100%;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.fz-dlg .in{padding:12px;background:#fff}
+.fz-dlg .fp{font-family:Consolas,monospace;word-break:break-all;background:#fef9c3;padding:1px 4px}
+.fz-dlg .ft{display:flex;justify-content:flex-end;gap:8px;padding:8px 12px}
+.smb{display:grid;grid-template-columns:200px 1fr;gap:8px;padding:8px}
+.smt,.smf{background:#fff;border:1px solid #d1d5db;padding:8px}
+.smt .sel{background:#2563eb;color:#fff;padding:1px 4px}
+.fzf{display:flex;align-items:center;gap:6px;margin:8px 0;flex-wrap:wrap}
+.fzf label{min-width:150px}
+.fzv{border:1px solid #9ca3af;padding:2px 6px;background:#fff;min-width:50px}
+.fzv.dd::after{content:"  ▾";color:#555}
+.mk{display:inline-flex;width:20px;height:20px;border-radius:50%;background:#dc2626;color:#fff;font-style:normal;font-weight:700;align-items:center;justify-content:center;font-size:11px;font-family:system-ui}
+.fz-foot{display:flex;justify-content:flex-end;gap:8px;padding:6px 10px;border-top:1px solid #d1d5db}
+ol.legend li::marker{color:#dc2626;font-weight:700}
+/* ===== 6. Comparaison ===== */
+.cf{background:#eff6ff;border:2px solid #bfdbfe;border-radius:14px;padding:16px}
+.ca{background:#f0fdf4;border:2px solid #bbf7d0;border-radius:14px;padding:16px}
+.slog{list-style:none;padding:0;margin:0;min-height:100px}
+.slog li{padding:7px 10px;border-left:3px solid #6366f1;margin-bottom:6px;background:#f8fafc;border-radius:0 8px 8px 0;animation:fi .3s;font-size:.9rem}
+.case{font-size:1.12rem;font-weight:600;color:var(--ink);background:linear-gradient(135deg,#eef2ff,#fdf4ff);padding:20px;border-radius:14px;margin:12px 0;text-align:center}
+/* ===== 7. Glossaire et badges ===== */
+.glist{display:grid;gap:8px}
+.gi{background:#fff;border-radius:12px;box-shadow:var(--sh)}
+.gh2{width:100%;display:flex;justify-content:space-between;padding:13px 17px;border:0;background:none;font-weight:700;color:var(--ink);cursor:var(--curp);text-align:left}
+.gd{display:none;padding:0 17px 15px}.gi.open .gd{display:block;animation:fi .25s}
+.seen{color:var(--ok)}
+.bgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:14px}
+.bc{text-align:center;padding:16px 12px;border-radius:14px;background:#fff;box-shadow:var(--sh);border:2px solid transparent}
+.bc .ic{font-size:2.5rem}.bc.un{border-color:var(--ac);background:linear-gradient(#fffbeb,#fff)}.bc.lo .ic,.bc.lo h3{filter:grayscale(1);opacity:.4}
+/* ===== 8. Certificat ===== */
+#cert{background:linear-gradient(135deg,#fffdf5,#eef2ff);border:12px double var(--p);border-radius:10px;padding:36px 34px;text-align:center;font-family:Georgia,"Times New Roman",serif;color:var(--ink);margin-bottom:18px}
+.ct1{letter-spacing:.2em;text-transform:uppercase;font-size:.85rem;color:var(--mu)}
+.ct2{font-size:2.3rem;margin:.2em 0}
+.cname{display:inline-block;font-size:2.4rem;font-weight:bold;color:var(--p);border-bottom:3px solid var(--ac);padding:0 22px 6px;margin:6px 0 12px;word-break:break-word}
+.final{display:inline-block;margin:6px auto 4px;padding:8px 28px;border:3px solid var(--ac);border-radius:14px;background:#fff}
+.final span{display:block;font-size:.8rem;letter-spacing:.15em;text-transform:uppercase;color:var(--mu)}
+.final b{font-size:2.2rem;color:var(--p)}
+.cstats{display:flex;justify-content:center;gap:28px;flex-wrap:wrap;margin:14px 0}
+.cstats b{display:block;font-size:1.4rem;color:var(--p)}.cstats span{font-size:.85rem;color:var(--mu)}
+.cfoot{display:flex;justify-content:space-between;align-items:flex-end;margin-top:18px;gap:14px;text-align:left}
+.seal{width:100px;height:100px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fde68a,#f59e0b 70%);display:flex;flex-direction:column;align-items:center;justify-content:center;color:#7c2d12;font-weight:bold;font-size:.75rem;transform:rotate(-10deg);border:4px dotted #fff;flex-shrink:0}
+/* ===== 9. Mascotte, modale, notifications ===== */
+#mascot{position:fixed;right:12px;bottom:10px;z-index:60;display:flex;align-items:flex-end;gap:6px}
+.bub{position:relative;max-width:280px;background:#fff;border:2px solid var(--ps);border-radius:18px 18px 4px 18px;padding:11px 28px 11px 13px;box-shadow:var(--sh);font-size:.9rem;color:var(--ink);margin-bottom:56px}
+.bub.pop{animation:pop .3s}
+.bx{position:absolute;top:3px;right:6px;border:0;background:none;font-size:1.2rem;cursor:var(--curp);color:var(--mu)}
+#mascot.min .bub{display:none}
+#msvg{width:92px;height:115px;cursor:var(--curp);animation:bob 3s ease-in-out infinite;filter:drop-shadow(0 6px 10px rgba(79,70,229,.3))}
+#mascot.happy #msvg{animation:jump .7s}#mascot.sad #msvg{animation:sad .9s}
+.eyes{transform-origin:60px 53px;animation:blink 4.5s infinite}
+.arm{transform-origin:90px 108px;animation:wave 3s infinite}
+#modal{position:fixed;inset:0;background:rgba(15,23,42,.55);display:none;align-items:center;justify-content:center;z-index:80;padding:16px}
+#modal.open{display:flex}
+.mc{background:#fff;border-radius:18px;padding:22px;max-width:460px;width:100%;animation:pop .25s}
+.mh{display:flex;justify-content:space-between;align-items:center;color:var(--mu);font-weight:700;font-size:.85rem;margin-bottom:8px}
+#toasts{position:fixed;top:110px;right:14px;z-index:90;display:flex;flex-direction:column;gap:8px;align-items:flex-end;pointer-events:none}
+.toast{background:var(--ink);color:#fff;padding:9px 15px;border-radius:12px;animation:fi .3s;font-size:.9rem;max-width:320px;transition:opacity .4s}
+.toast.bdg{background:linear-gradient(90deg,#f59e0b,#ef4444);font-size:1rem}
+.toast.neg{background:#b91c1c}
+.toast.fast{background:linear-gradient(90deg,#d97706,#f59e0b)}
+#confetti{position:fixed;inset:0;pointer-events:none;z-index:100}
+/* ===== 10. Animations ===== */
+@keyframes fi{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-10px)}40%{transform:translateX(10px)}60%{transform:translateX(-6px)}80%{transform:translateX(6px)}}
+.shake{animation:shake .5s!important}
+@keyframes bump{50%{transform:scale(1.25)}}.bump{animation:bump .4s}
+@keyframes pop{from{transform:scale(.85);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes toR{from{left:0;transform:translateX(0);opacity:1}to{left:100%;transform:translateX(-100%);opacity:1}}
+@keyframes toL{from{left:100%;transform:translateX(-100%);opacity:1}to{left:0;transform:translateX(0);opacity:1}}
+@keyframes bob{50%{transform:translateY(-7px)}}
+@keyframes jump{30%{transform:translateY(-24px) rotate(-6deg)}60%{transform:translateY(0)}80%{transform:translateY(-8px)}}
+@keyframes sad{25%{transform:rotate(-10deg) translateY(4px)}50%{transform:rotate(8deg) translateY(4px)}}
+@keyframes blink{0%,92%,100%{transform:scaleY(1)}95%{transform:scaleY(.1)}}
+@keyframes wave{70%{transform:rotate(-18deg)}80%{transform:rotate(10deg)}90%{transform:rotate(-12deg)}}
+/* ===== 11. Responsive et impression ===== */
+@media(max-width:720px){.g2,.fz-panes,.smb{grid-template-columns:1fr}#msvg{width:60px;height:75px}.bub{max-width:190px;font-size:.8rem;margin-bottom:36px}#cert{padding:22px 14px}.cname{font-size:1.7rem}.ct2{font-size:1.6rem}.node{min-width:56px;font-size:1.9rem}}
+@media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important}}
+@media print{
+  @page{size:A4 landscape;margin:10mm}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  body{background:#fff}
+  .top,#mascot,#toasts,#confetti,#modal,.noprint{display:none!important}
+  main{padding:0;max-width:none}
+  .sec{display:none!important}
+  #sec-certificate{display:block!important;animation:none}
+  #cert{margin:0}
+}
+</style>
+</head>
+<body>
+
+<!-- ===== En-tête : score, badges, son, réinitialisation ===== -->
+<div class="top">
+  <header class="bar">
+    <div class="brand">📦 Transfert Quest</div>
+    <div class="stats">
+      <span class="pill" id="hName"></span>
+      <span class="pill" id="hPts">⭐ 0 pts</span>
+      <span class="pill" id="hBdg">🏅 0</span>
+      <button class="ib" id="sndBtn" title="Activer / couper le son" aria-label="Activer ou couper le son">🔊</button>
+      <button class="ib" id="rstBtn" title="Recommencer à zéro" aria-label="Recommencer à zéro">↺</button>
+    </div>
+  </header>
+  <nav id="nav" aria-label="Étapes du jeu"></nav>
+</div>
+
+<!-- ===== Sections (contenu généré en JavaScript) ===== -->
+<main>
+  <section class="sec" id="sec-home"></section>
+  <section class="sec" id="sec-guided"></section>
+  <section class="sec" id="sec-compare"></section>
+  <section class="sec" id="sec-quiz"></section>
+  <section class="sec" id="sec-certificate"></section>
+  <section class="sec" id="sec-glossary"></section>
+  <section class="sec" id="sec-badges"></section>
+</main>
+
+<!-- ===== Mascotte « Octet » ===== -->
+<div id="mascot">
+  <div class="bub" id="bub" aria-live="polite"><button class="bx" id="bubX" aria-label="Masquer">×</button><div id="bubT"></div></div>
+  <svg id="msvg" viewBox="0 0 120 150" role="img" aria-label="Octet, la mascotte. Cliquer pour une astuce.">
+    <line x1="60" y1="22" x2="60" y2="9" stroke="#4338ca" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="60" cy="8" r="6" fill="#f59e0b"/>
+    <path d="M30 110 Q14 114 12 126" stroke="#4338ca" stroke-width="6" fill="none" stroke-linecap="round"/>
+    <g class="arm"><path d="M90 110 Q106 102 110 90" stroke="#4338ca" stroke-width="6" fill="none" stroke-linecap="round"/></g>
+    <rect x="16" y="22" width="88" height="72" rx="22" fill="#6366f1"/>
+    <rect x="26" y="33" width="68" height="50" rx="16" fill="#eef2ff"/>
+    <g class="eyes"><circle cx="46" cy="53" r="6.5" fill="#1e1b4b"/><circle cx="74" cy="53" r="6.5" fill="#1e1b4b"/><circle cx="48" cy="51" r="2" fill="#fff"/><circle cx="76" cy="51" r="2" fill="#fff"/></g>
+    <circle cx="35" cy="67" r="4.5" fill="#fda4af"/><circle cx="85" cy="67" r="4.5" fill="#fda4af"/>
+    <path id="mouth" d="M48 64 Q60 72 72 64" stroke="#1e1b4b" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+    <rect x="30" y="98" width="60" height="42" rx="12" fill="#818cf8"/>
+    <path d="M52 128 v-18 M46 116 l6 -6 l6 6 M68 110 v18 M62 122 l6 6 l6 -6" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+</div>
+
+<!-- ===== Fenêtre du glossaire ===== -->
+<div id="modal" role="dialog" aria-modal="true" aria-labelledby="mT">
+  <div class="mc">
+    <div class="mh"><span>📖 GLOSSAIRE</span><button class="btn soft" id="mX" aria-label="Fermer">×</button></div>
+    <h2 id="mT"></h2><p id="mD"></p>
+    <button class="btn soft" id="mAll">Voir tout le glossaire</button>
+  </div>
+</div>
+<div id="toasts" aria-live="polite"></div>
+<canvas id="confetti"></canvas>
+
+<script>
+(function(){
+'use strict';
+
+/* ================= 0. OUTILS ================= */
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+const today=()=>new Date().toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'});
+const sec=s=>s.toFixed(1).replace('.',',');
+/* Terme cliquable du glossaire, utilisable dans tous les textes */
+const T=(k,l)=>`<button type="button" class="term" data-t="${k}">${l}</button>`;
+
+/* ================= RÈGLES DE SCORE (modifiables) =================
+   PENALTY          : points retirés à chaque mauvaise réponse (parcours guidé, défi, quiz final).
+   FAST_S           : délai en secondes pour obtenir le bonus rapidité. Le compte à rebours
+                      démarre quand la question apparaît à l'écran.
+   FAST_BONUS       : points gagnés pour une bonne réponse du premier coup dans ce délai.
+                      Réponse plus lente : pas de bonus (mais pas de pénalité non plus).
+   QUIZ_CHRONO_FROM : numéro de la question du quiz final à partir de laquelle le chrono se lance.
+   QUIZ_LIMIT       : temps en secondes accordé à chaque question chronométrée.
+                      Temps écoulé = mauvaise réponse (avec la pénalité habituelle).
+   Le total de points ne descend jamais sous zéro. */
+const PENALTY=2, FAST_S=10, FAST_BONUS=1, QUIZ_CHRONO_FROM=4, QUIZ_LIMIT=20;
+
+/* ================= 1. CONTENUS ================= */
+
+/* --- 1.1 Glossaire --- */
+const GLOSS={
+  protocole:{t:'Protocole',d:'Ensemble de règles communes qui permettent à deux machines de se comprendre, comme une langue partagée. FTP, SFTP et HTTPS sont des protocoles.'},
+  client:{t:'Client',d:'Programme ou ordinateur qui se connecte pour demander quelque chose (ex. : FileZilla, WinSCP, un traitement automatique).'},
+  serveur:{t:'Serveur',d:'Machine qui attend les connexions et met des fichiers ou des services à disposition des clients.'},
+  ftp:{t:'FTP',d:'File Transfer Protocol. Protocole historique (1971) de transfert de fichiers. Simple, mais tout circule en clair, y compris le mot de passe.'},
+  sftp:{t:'SFTP',d:'SSH File Transfer Protocol. Transfert de fichiers à travers une connexion SSH chiffrée, en général sur le port 22. C’est le standard recommandé.'},
+  ssh:{t:'SSH',d:'Secure Shell. Protocole qui crée un tunnel chiffré entre deux machines. Le SFTP fonctionne à l’intérieur de ce tunnel.'},
+  port:{t:'Port',d:'Numéro de « porte d’entrée » d’un serveur. Chaque service a le sien : 21 pour FTP, 22 pour SSH/SFTP, 443 pour HTTPS.'},
+  chiffrement:{t:'Chiffrement',d:'Transformation des données en message illisible pour qui ne possède pas la clé permettant de les déchiffrer.'},
+  clair:{t:'En clair',d:'Se dit de données transmises sans chiffrement : quiconque intercepte la communication peut les lire.'},
+  auth:{t:'Authentification',d:'Étape où l’on prouve son identité : mot de passe, clé SSH, jeton…'},
+  paire:{t:'Paire de clés SSH',d:'Duo de clés liées mathématiquement : une clé publique (partageable) et une clé privée (secrète).'},
+  publique:{t:'Clé publique',d:'Partie partageable de la paire de clés (fichier .pub). On la donne à l’administrateur du serveur, qui l’ajoute aux clés autorisées.'},
+  privee:{t:'Clé privée',d:'Partie secrète de la paire de clés. Elle reste sur ta machine et ne doit JAMAIS être envoyée à qui que ce soit.'},
+  empreinte:{t:'Empreinte (fingerprint)',d:'Code court qui identifie la clé d’un serveur. On la compare avec celle fournie par le partenaire pour être sûr de parler au bon serveur.'},
+  upload:{t:'Upload (dépôt)',d:'Envoi d’un fichier de ta machine vers le serveur. Dans FileZilla : du panneau de gauche (site local) vers celui de droite (site distant).'},
+  download:{t:'Download (téléchargement)',d:'Récupération d’un fichier du serveur vers ta machine. Dans FileZilla : du panneau de droite vers celui de gauche.'},
+  passif:{t:'Mode passif',d:'Mode du FTP où le client ouvre aussi la connexion de données ; il passe mieux à travers les pare-feux.'},
+  filezilla:{t:'FileZilla',d:'Logiciel gratuit et open source pour transférer des fichiers, notamment en FTP et en SFTP (Windows, macOS, Linux). Ton ordinateur s’affiche à gauche, le serveur à droite.'},
+  winscp:{t:'WinSCP',d:'Client gratuit pour Windows, très utilisé en entreprise, qui gère notamment le SFTP et le FTP.'},
+  gestsites:{t:'Gestionnaire de sites',d:'Écran de FileZilla (menu Fichier) où l’on enregistre les paramètres d’un serveur : protocole, hôte, port, utilisateur, méthode d’authentification.'},
+  api:{t:'API',d:'Application Programming Interface. Porte d’entrée qu’une application offre à d’autres programmes : une question, une réponse immédiate.'},
+  endpoint:{t:'Endpoint',d:'Adresse précise d’un service d’API, par exemple https://api.exemple.fr/stocks/SAC-123.'},
+  json:{t:'JSON',d:'Format texte léger et structuré, très utilisé par les API. Exemple : { "article": "SAC-123", "stock": 3 }.'},
+  csv:{t:'CSV',d:'Fichier texte en tableau : une ligne par enregistrement, colonnes séparées par une virgule ou un point-virgule. Très courant en SFTP.'},
+  https:{t:'HTTPS',d:'Version chiffrée (par TLS) du protocole du web. Les API modernes l’utilisent.'},
+  parefeu:{t:'Pare-feu (firewall)',d:'Filtre qui autorise ou bloque les connexions selon des règles (adresses IP, ports).'},
+  encodage:{t:'Encodage',d:'Manière de représenter les caractères en octets (UTF-8, ISO-8859-1…). Mal choisi, « é » devient « Ã© ».'},
+  batch:{t:'Traitement par lots (batch)',d:'On regroupe beaucoup de données et on les traite d’un coup, souvent à heure fixe (la nuit).'},
+  token:{t:'Jeton (token)',d:'Chaîne secrète envoyée avec chaque appel d’API pour prouver qu’on a le droit d’utiliser le service.'}
+};
+
+/* --- 1.2 Reproduction statique du Gestionnaire de sites de FileZilla --- */
+const SITEMGR=`<div class="fz" aria-label="Reproduction du Gestionnaire de sites de FileZilla configuré en SFTP">
+ <div class="fz-title"><span><b class="fzl">Fz</b> Gestionnaire de Sites</span><span class="fz-ctl">─ ☐ ✕</span></div>
+ <div class="smb">
+  <div class="smt"><div>Sélectionnez une entrée :</div><div style="margin-top:6px">📁 Mes sites</div><div class="sel">&nbsp;&nbsp;🖥️ Partenaire Logistique</div>
+   <div style="margin-top:16px;display:flex;gap:4px;flex-wrap:wrap"><span class="fz-b">Nouveau site</span><span class="fz-b">Supprimer</span></div></div>
+  <div class="smf">
+   <div class="fz-tabs"><span class="on">Général</span><span>Avancé</span><span>Paramètres de transfert</span><span>Jeu de caractères</span></div>
+   <div class="fzf"><label>Protocole :</label><span class="fzv dd">SFTP - SSH File Transfer Protocol</span><i class="mk">1</i></div>
+   <div class="fzf"><label>Hôte :</label><span class="fzv">sftp.logistique.fr</span><span>Port :</span><span class="fzv">22</span><i class="mk">2</i></div>
+   <div class="fzf"><label>Type d’authentification :</label><span class="fzv dd">Fichier de clé</span><i class="mk">3</i></div>
+   <div class="fzf"><label>Utilisateur :</label><span class="fzv">marie</span></div>
+   <div class="fzf"><label>Fichier de clé :</label><span class="fzv">C:\\Users\\marie\\.ssh\\id_ed25519</span><span class="fz-b">Parcourir…</span><i class="mk">4</i></div>
+  </div></div>
+ <div class="fz-foot"><span class="fz-b pri">Connexion</span><span class="fz-b">OK</span><span class="fz-b">Annuler</span></div></div>`;
+
+/* --- 1.3 Parcours guidé (7 étapes, chacune débloquée par la précédente) --- */
+const LESSONS=[
+ {icon:'📮',title:'Client, serveur et protocole',demo:'cs',
+  html:`<p>Chaque jour, les entreprises s’échangent des fichiers : ventes, catalogues, factures, photos… Deux acteurs sont nécessaires :</p>
+  <ul><li>💻 le ${T('client','client')} : il <b>se connecte</b> et fait des demandes ;</li><li>🗄️ le ${T('serveur','serveur')} : il <b>attend</b>, stocke les fichiers et répond.</li></ul>
+  <p>Pour se comprendre, ils suivent les mêmes règles : un ${T('protocole','protocole')}.</p>
+  <div class="ana">📮 <b>Analogie :</b> le serveur est un bureau de poste rempli de casiers. Le client, c’est toi qui viens déposer un colis… ou en retirer un.</div>`,
+  q:{q:'Dans un échange de fichiers, quel est le rôle du serveur ?',options:[
+   {t:'Il attend les connexions et met les fichiers à disposition',ok:true,why:'Exactement ! Le serveur est toujours disponible et répond aux demandes.'},
+   {t:'Il se connecte pour demander un fichier',why:'Ça, c’est le rôle du client : c’est lui qui prend l’initiative.'},
+   {t:'Il imprime les fichiers reçus',why:'En informatique, un serveur « rend un service » : ici, stocker et distribuer des fichiers.'}]}},
+ {icon:'📡',title:'Le FTP, l’ancêtre du transfert de fichiers',
+  html:`<p>${T('ftp','FTP')} signifie <b>File Transfer Protocol</b>. Créé en 1971, c’est l’un des plus anciens protocoles encore utilisés.</p>
+  <ol><li>Le client se connecte au serveur sur le ${T('port','port')} <b>21</b>.</li>
+  <li>Il s’identifie (identifiant + mot de passe) : c’est l’${T('auth','authentification')}.</li>
+  <li>Il demande à lister, déposer (${T('upload','upload')}) ou récupérer (${T('download','download')}) des fichiers.</li>
+  <li>Les fichiers voyagent par une <b>seconde connexion</b> dédiée aux données (port 20 ou port négocié en ${T('passif','mode passif')}).</li></ol>
+  <div class="ana">🚪 <b>Analogie :</b> un port, c’est le numéro d’un guichet. Le bâtiment (le serveur) a une seule adresse, mais chaque service a son guichet.</div>`,
+  q:{q:'Sur quel port un serveur FTP attend-il les connexions, par défaut ?',options:[
+   {t:'Le port 22',why:'22 est le port de SSH, donc du SFTP. On y arrive bientôt !'},
+   {t:'Le port 21',ok:true,why:'Bravo ! 21 est le port par défaut du FTP.'},
+   {t:'Le port 443',why:'443 est le port du HTTPS (web sécurisé).'}]}},
+ {icon:'✉️',title:'Le gros défaut du FTP : tout circule en clair',demo:'spyF',
+  html:`<p>Le FTP a été conçu à une époque où quelques universités se faisaient confiance. Résultat : <b>rien n’est chiffré</b>. Identifiant, mot de passe et contenu des fichiers voyagent ${T('clair','en clair')}.</p>
+  <div class="ana">✉️ <b>Analogie :</b> envoyer un fichier en FTP, c’est comme envoyer une carte postale : chaque facteur sur le trajet peut la lire.</div>
+  <p>👉 Lance la démo pour voir ce qu’intercepte un espion.</p>`,
+  q:{q:'Pourquoi le FTP classique est-il déconseillé sur Internet ?',options:[
+   {t:'Il est trop lent pour les gros fichiers',why:'Non, le FTP est plutôt efficace. Son problème, c’est la sécurité.'},
+   {t:'Le mot de passe et les fichiers circulent sans chiffrement',ok:true,why:'Exactement : n’importe qui sur le trajet peut tout lire.'},
+   {t:'Il ne fonctionne qu’avec Windows',why:'Le FTP fonctionne sur tous les systèmes.'}]}},
+ {icon:'🔒',title:'Le SFTP : le transfert de fichiers chiffré',demo:'spyS',
+  html:`<p>${T('sftp','SFTP')} signifie <b>SSH File Transfer Protocol</b>. Il fonctionne dans un tunnel ${T('ssh','SSH')} protégé par ${T('chiffrement','chiffrement')}.</p>
+  <ul><li>🔒 <b>Tout est chiffré</b> : identifiants, commandes, fichiers.</li>
+  <li>🚪 <b>Une seule connexion</b>, port <b>22</b> par défaut : plus simple à autoriser dans un ${T('parefeu','pare-feu')}.</li>
+  <li>✅ <b>Intégrité</b> : une modification en route serait détectée.</li></ul>
+  <div class="ana">🧳 <b>Analogie :</b> si le FTP est une carte postale, le SFTP est une valise blindée dont seuls l’expéditeur et le destinataire ont la combinaison.</div>`,
+  q:{q:'Quel port le SFTP utilise-t-il par défaut ?',options:[
+   {t:'21',why:'21 est le port du FTP classique.'},
+   {t:'80',why:'80 est le port du web non sécurisé (HTTP).'},
+   {t:'22',ok:true,why:'Oui ! Le SFTP utilise le port de SSH : 22.'}]}},
+ {icon:'🔑',title:'Prouver son identité : mot de passe ou clé SSH',
+  html:`<p>Pour se connecter en SFTP : soit un <b>mot de passe</b> (simple, mais devinable ou volable), soit une ${T('paire','paire de clés SSH')}, plus sûre et très utilisée pour les échanges automatiques :</p>
+  <ul><li>la ${T('publique','clé publique')} (fichier <code>.pub</code>) : tu la donnes à l’administrateur du serveur ;</li>
+  <li>la ${T('privee','clé privée')} : elle reste <b>secrète</b> sur ta machine.</li></ul>
+  <div class="ana">🔐 <b>Analogie :</b> tu distribues des cadenas ouverts (clé publique). Seule ta clé à toi (clé privée) prouve que c’est bien toi.</div>
+  <p>Le serveur aussi prouve son identité : à la première connexion, ton logiciel affiche son ${T('empreinte','empreinte')}. Compare-la avec celle fournie par le partenaire. Si elle change sans explication : méfiance !</p>`,
+  q:{q:'Un partenaire te demande « ta clé » pour t’ouvrir un accès SFTP. Que lui envoies-tu ?',options:[
+   {t:'Ma clé privée',why:'Jamais ! Quiconque la possède peut se faire passer pour toi.'},
+   {t:'Ma clé publique (le fichier .pub)',ok:true,why:'Parfait : elle est faite pour être partagée.'},
+   {t:'Les deux, pour être sûr',why:'Non : seule la publique se partage. Envoyer la privée la compromet.'}]}},
+ {icon:'🖥️',title:'En pratique : un client SFTP comme FileZilla',demo:'fz',
+  html:`<p>Au quotidien, on passe le plus souvent par un logiciel graphique, appelé ${T('client','client')} SFTP. Les plus connus : ${T('filezilla','FileZilla')} (gratuit, Windows/macOS/Linux), ${T('winscp','WinSCP')} (Windows) ou Cyberduck (macOS/Windows).</p>
+  <h3>Exemple 1 : enregistrer l’accès d’un partenaire</h3>
+  <p>Dans FileZilla, le ${T('gestsites','Gestionnaire de sites')} (menu <b>Fichier → Gestionnaire de sites</b>) permet d’enregistrer une fois pour toutes les informations fournies par le partenaire :</p>
+  ${SITEMGR}
+  <ol class="legend">
+   <li><b>Protocole :</b> choisir <b>SFTP – SSH File Transfer Protocol</b>, et surtout pas « FTP ».</li>
+   <li><b>Hôte et port :</b> l’adresse du serveur et le port <b>22</b>.</li>
+   <li><b>Type d’authentification :</b> « Normale » (mot de passe) ou « Fichier de clé » (clé SSH).</li>
+   <li><b>Fichier de clé :</b> l’emplacement de ta ${T('privee','clé privée')} sur ton poste. FileZilla s’en sert pour prouver ton identité, sans jamais l’envoyer au serveur.</li></ol>
+  <h3>Exemple 2 : la fenêtre principale</h3>
+  <p>En haut, la barre de <b>connexion rapide</b> ; en dessous, le <b>journal des messages</b> (très utile en cas d’erreur). À gauche, ton ordinateur (<b>site local</b>) ; à droite, le serveur (<b>site distant</b>). De gauche à droite = ${T('upload','upload')} ; de droite à gauche = ${T('download','download')}. En bas, la liste des transferts.</p>
+  <p class="sm mu">ℹ️ Illustrations recréées pour ce jeu d’après l’interface française de FileZilla 3 : l’aspect exact varie selon la version et le système.</p>`,
+  q:{q:'Dans le Gestionnaire de sites, tu configures l’accès SFTP d’un partenaire. Que choisis-tu ?',options:[
+   {t:'Protocole « SFTP – SSH File Transfer Protocol » et port 22',ok:true,why:'Exactement : le bon protocole et le bon port.'},
+   {t:'Protocole « FTP » et port 21',why:'Ce serait du FTP en clair : mot de passe et fichiers lisibles sur le réseau.'},
+   {t:'Protocole « SFTP – SSH File Transfer Protocol » et port 21',why:'Bon protocole, mais mauvais port : le SFTP écoute sur le port 22.'}]}},
+ {icon:'🏁',title:'Récapitulatif : FTP ou SFTP ?',
+  html:`<p>Tu connais maintenant les deux protocoles. Ils font le même travail (déposer et récupérer des fichiers), mais pas avec le même niveau de sécurité :</p>
+  <div class="tbl"><table><thead><tr><th></th><th>FTP</th><th>SFTP</th></tr></thead><tbody>
+  <tr><td><b>Nom complet</b></td><td>File Transfer Protocol</td><td>SSH File Transfer Protocol</td></tr>
+  <tr><td><b>Chiffrement</b></td><td>❌ Aucun : tout circule en clair</td><td>✅ Tout est chiffré</td></tr>
+  <tr><td><b>Port par défaut</b></td><td>21 (+ connexion de données)</td><td>22 (connexion unique)</td></tr>
+  <tr><td><b>Authentification</b></td><td>Identifiant + mot de passe</td><td>Mot de passe et/ou clé SSH</td></tr>
+  <tr><td><b>Vérification du serveur</b></td><td>❌ Non</td><td>✅ Empreinte</td></tr>
+  <tr><td><b>Dans FileZilla</b></td><td>Protocole « FTP »</td><td>Protocole « SFTP – SSH File Transfer Protocol »</td></tr>
+  <tr><td><b>Usage conseillé</b></td><td>Anciens systèmes, réseau isolé, données non sensibles</td><td>Tous les échanges, surtout via Internet</td></tr></tbody></table></div>
+  <div class="ins">💡 <b>À retenir :</b> seul le SFTP protège les données en chemin. C’est aujourd’hui le choix par défaut.</div>`,
+  q:{q:'Une boutique doit envoyer chaque nuit ses ventes au siège, via Internet. Quel protocole choisir ?',options:[
+   {t:'SFTP, avec une clé SSH',ok:true,why:'Les données circulent chiffrées, et l’authentification par clé est adaptée aux envois automatiques.'},
+   {t:'FTP, car il est plus ancien donc plus fiable',why:'Ancien ne veut pas dire sûr : les ventes et le mot de passe circuleraient en clair sur Internet.'},
+   {t:'Une clé USB envoyée par la poste',why:'Lent, non automatisé, et une clé USB peut se perdre !'}]}}
+];
+
+/* --- 1.4 Simulations fichier / API --- */
+const SIMS={
+ sftp:{title:'📁 Dépôt SFTP (traitement de nuit)',steps:[
+  '🕐 02:00 — La caisse génère ventes_2026-11-04.csv (12 480 lignes)',
+  '🔐 02:01 — Connexion SFTP au serveur du siège (port 22, clé SSH)',
+  '⬆️ 02:01 — Dépôt (upload) du fichier dans /depot/ventes/',
+  '😴 02:02 — Le fichier attend sur le serveur…',
+  '🕒 03:00 — Le siège récupère le fichier (download)',
+  '⚙️ 03:05 — Traitement des 12 480 lignes d’un coup',
+  '✅ 03:10 — Tableaux de bord à jour pour l’équipe du matin'],
+  payload:'Fichier ventes_2026-11-04.csv :\n\ndate;boutique;article;quantite;montant\n2026-11-04;PARIS01;SAC-123;2;5400.00\n2026-11-04;LYON02;FOULARD-88;1;450.00\n... (12 478 autres lignes)'},
+ api:{title:'🔌 Appel d’API (temps réel)',steps:[
+  '🧑 14:32:10.000 — Une cliente demande si le sac SAC-123 est disponible',
+  '📤 14:32:10.050 — L’appli appelle GET https://api.exemple.fr/stocks/SAC-123',
+  '🔑 14:32:10.051 — La requête contient un jeton d’accès (token)',
+  '⚙️ 14:32:10.120 — Le système de stock cherche l’information',
+  '📥 14:32:10.180 — Réponse : 200 OK + données JSON',
+  '✅ 14:32:10.200 — « 3 en stock » : en moins d’une seconde !'],
+  payload:'Requête :\nGET /stocks/SAC-123 HTTP/1.1\nHost: api.exemple.fr\nAuthorization: Bearer eyJhbGciOi...\n\nRéponse :\nHTTP/1.1 200 OK\nContent-Type: application/json\n\n{ "article": "SAC-123", "boutique": "PARIS01", "stock": 3 }'}
+};
+
+/* --- 1.5 Défi « Fichier ou API ? » --- */
+const CASES=[
+ {t:'Chaque nuit, envoyer à la comptabilité toutes les ventes de 300 boutiques.',a:'file',why:'Gros volume, horaire planifié, pas d’urgence : cas d’école du fichier SFTP.'},
+ {t:'Pendant qu’un client attend, vérifier si une taille est disponible ailleurs.',a:'api',why:'Le client attend : il faut une réponse en temps réel.'},
+ {t:'Un transporteur dépose chaque matin la liste de toutes les livraisons de la veille.',a:'file',why:'Récapitulatif quotidien et volumineux : parfait pour un fichier.'},
+ {t:'Le site affiche le statut d’une commande quand le client se connecte.',a:'api',why:'Une question précise, une réponse immédiate et à jour.'},
+ {t:'Envoyer 5 000 photos haute définition à une agence de communication.',a:'file',why:'De gros fichiers en grande quantité : le transfert de fichiers est adapté.'},
+ {t:'Valider un paiement par carte au moment du clic sur « Payer ».',a:'api',why:'Accepté ou refusé immédiatement : typiquement une API.'},
+ {t:'Transmettre chaque mois le catalogue des prix à un partenaire sans API.',a:'file',why:'Mensuel, volumineux, et pas d’API côté partenaire : fichier SFTP.'},
+ {t:'Prévenir instantanément l’entrepôt dès qu’une commande en ligne est passée.',a:'api',why:'Chaque commande est un événement à traiter tout de suite.'}
+];
+
+/* --- 1.6 Quiz final (8 questions, tirées dans le désordre) --- */
+const QUIZ=[
+ {q:'Que signifie SFTP ?',options:[{t:'SSH File Transfer Protocol',ok:true,why:'Le S vient de SSH, le tunnel chiffré.'},{t:'Super Fast Transfer Protocol',why:'Inventé ! Le SFTP est surtout plus sûr, pas plus rapide.'},{t:'Server File Transfer Protocol',why:'Non : le S vient de SSH (Secure Shell).'}]},
+ {q:'Principal avantage du SFTP sur le FTP ?',options:[{t:'Il chiffre identifiants, commandes et fichiers',ok:true,why:'Un espion ne voit que des données illisibles.'},{t:'Il compresse les fichiers',why:'L’avantage clé est le chiffrement.'},{t:'Il n’a pas besoin d’identifiant',why:'Au contraire, il exige une authentification.'}]},
+ {q:'Dans FileZilla, tu fais passer un fichier du panneau « Site local » (gauche) vers le panneau « Site distant » (droite). Que fais-tu ?',options:[{t:'Un upload : tu déposes le fichier sur le serveur',ok:true,why:'De ton poste vers le serveur = upload.'},{t:'Un download : tu récupères le fichier',why:'C’est l’inverse : le download va de droite à gauche.'},{t:'Tu supprimes le fichier de ton ordinateur',why:'Le fichier est copié, pas supprimé.'}]},
+ {q:'Quelle clé SSH doit rester secrète ?',options:[{t:'La clé privée',ok:true,why:'Elle ne quitte jamais ton poste.'},{t:'La clé publique',why:'Elle est faite pour être partagée.'},{t:'Les deux',why:'Seule la privée est secrète.'}]},
+ {q:'Une appli doit afficher un stock en temps réel. Que choisir ?',options:[{t:'Une API',ok:true,why:'Réponse en quelques millisecondes, à la demande.'},{t:'Un fichier SFTP chaque nuit',why:'Le stock aurait des heures de retard.'},{t:'Un e-mail avec pièce jointe',why:'Ni automatisé, ni temps réel.'}]},
+ {q:'Format le plus utilisé par les API modernes ?',options:[{t:'JSON',ok:true,why:'Léger, structuré, lisible par tous les langages.'},{t:'CSV',why:'Très courant… dans les échanges de fichiers.'},{t:'PDF',why:'Le PDF sert à présenter des documents.'}]},
+ {q:'Pour un envoi SFTP automatique chaque nuit vers un partenaire, quelle authentification est la plus sûre ?',options:[{t:'Une paire de clés SSH (la clé publique est donnée au partenaire)',ok:true,why:'Pas de mot de passe à deviner ou à faire circuler, et la clé privée reste sur ton serveur.'},{t:'Un mot de passe simple, envoyé par e-mail',why:'Un mot de passe simple se devine, et l’e-mail n’est pas un canal sûr.'},{t:'Aucune : le SFTP chiffre déjà tout',why:'Le chiffrement protège le trajet, mais il faut toujours prouver son identité.'}]},
+ {q:'FileZilla affiche une empreinte de serveur différente de celle annoncée par le partenaire. Que fais-tu ?',options:[{t:'Je refuse et je vérifie avec le partenaire',ok:true,why:'Ce pourrait être un imposteur : on vérifie toujours.'},{t:'J’accepte pour ne pas bloquer le flux',why:'Risqué : tu enverrais tes fichiers à un inconnu.'},{t:'Je repasse en FTP',why:'Des données en clair : la pire solution !'}]}
+];
+
+/* --- 1.7 Badges (actions variées) --- */
+const BADGES=[
+ {id:'premiers_pas',ic:'🚀',n:'Premiers pas',d:'Saisir ton nom et lancer l’aventure.'},
+ {id:'espion',ic:'🕵️',n:'Espion d’un jour',d:'Intercepter un mot de passe FTP dans la démo.'},
+ {id:'pilote',ic:'🖥️',n:'Pilote FileZilla',d:'Réussir la mission dans la fenêtre FileZilla.'},
+ {id:'diplome',ic:'🎓',n:'Fondations solides',d:'Terminer le parcours guidé.'},
+ {id:'observateur',ic:'🔬',n:'Observateur',d:'Lancer les deux simulations (SFTP et API).'},
+ {id:'architecte',ic:'🏗️',n:'Architecte des flux',d:'Obtenir au moins 6/8 au défi « Fichier ou API ? ».'},
+ {id:'expert',ic:'🧠',n:'Expert',d:'Obtenir au moins 7/8 au quiz final.'},
+ {id:'parfait',ic:'💯',n:'Sans faute',d:'Obtenir 8/8 au quiz final.'},
+ {id:'rapide',ic:'⚡',n:'Vif comme l’éclair',d:'Obtenir 5 bonus rapidité.'},
+ {id:'serie',ic:'🔥',n:'En feu',d:'Enchaîner 5 bonnes réponses d’affilée.'},
+ {id:'curieux',ic:'👀',n:'Curieux',d:'Consulter 5 termes du glossaire.'},
+ {id:'encyclo',ic:'📚',n:'Encyclopédiste',d:'Consulter tous les termes du glossaire.'},
+ {id:'explorateur',ic:'🧭',n:'Explorateur',d:'Visiter toutes les sections.'},
+ {id:'ami',ic:'🤖',n:'Ami d’Octet',d:'Cliquer 5 fois sur la mascotte.'},
+ {id:'collection',ic:'💎',n:'Collectionneur',d:'Atteindre 1 000 points.'},
+ {id:'certifie',ic:'📜',n:'Certifié',d:'Terminer le quiz final et obtenir ton certificat.'}
+];
+
+/* --- 1.8 Sections : parcours séquentiel (req = étape à terminer avant) --- */
+const SECTIONS=[
+ {id:'home',l:'🏠 Accueil'},
+ {id:'guided',l:'① 🎓 Parcours guidé',req:'home'},
+ {id:'compare',l:'② 🔀 Fichiers vs API',req:'guided'},
+ {id:'quiz',l:'③ 📝 Quiz final',req:'compare'},
+ {id:'certificate',l:'④ 📜 Certificat',req:'quiz'},
+ {id:'glossary',l:'📖 Glossaire'},
+ {id:'badges',l:'🏅 Badges'}
+];
+const SAY={
+ home:'Bienvenue ! Je suis <b>Octet</b> 🤖, ton guide dans le monde des transferts de fichiers.',
+ guided:`On avance pas à pas. ⚡ Réponds juste en moins de ${FAST_S} s pour +${FAST_BONUS} pt bonus… mais chaque erreur coûte ${PENALTY} points !`,
+ compare:'Fichier ou API ? Termine le défi en bas de page pour débloquer le quiz final.',
+ quiz:`Dès la question ${QUIZ_CHRONO_FROM}, un chrono de ${QUIZ_LIMIT} s par question se lance. Reste concentré !`,
+ glossary:'Ton dictionnaire de poche, accessible à tout moment. Chaque nouveau terme rapporte des points !',
+ badges:'Chaque badge récompense une action différente. Lesquels te manquent ?',
+ certificate:'Voici ton certificat ! Tu peux corriger ton nom puis l’imprimer.'
+};
+const HAPPY=['Bravo ! 🎉','Exactement !','Tu progresses vite ! 🚀','Bien joué !','Parfait ! 👌'];
+const SAD=[`Oups… −${PENALTY} points. Lis bien l’explication !`,'Pas tout à fait. Prends le temps de réfléchir.','Une erreur, c’est une occasion d’apprendre !'];
+const TIPS=['SFTP = port 22, FTP = port 21.','Ne partage jamais ta clé privée !','Une API, c’est comme un serveur au restaurant : tu commandes, il t’apporte la réponse.','Dans FileZilla : à gauche ton poste, à droite le serveur.','Compare toujours l’empreinte du serveur avec celle du partenaire.',`⚡ Bonne réponse du premier coup en moins de ${FAST_S} s = +${FAST_BONUS} pt bonus !`,`Chaque erreur coûte ${PENALTY} points : mieux vaut réfléchir que cliquer au hasard !`];
+
+/* ================= 2. ÉTAT ET SAUVEGARDE ================= */
+const KEY='transfertQuest.v5';
+const def=()=>({started:false,name:'',points:0,badges:[],step:0,guidedDone:false,ans:{},visited:[],gloss:[],flags:{},sortBest:-1,quizBest:-1,quizPlays:0,lastQuiz:null,fast:0,errors:0,streak:0,clicks:0,sound:true,cert:null});
+let S;
+try{S=Object.assign(def(),JSON.parse(localStorage.getItem(KEY)||'{}'));}catch(e){S=def();}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}};
+/* Renvoie true la première fois qu’un drapeau est activé */
+const once=f=>{if(S.flags[f])return false;S.flags[f]=true;save();return true;};
+/* Conditions de réussite de chaque étape */
+const DONE={home:()=>S.started,guided:()=>S.guidedDone,compare:()=>S.sortBest>=0,quiz:()=>S.quizBest>=0,certificate:()=>!!S.cert};
+const NEED={home:'Indique d’abord ton prénom sur l’accueil',guided:'Termine d’abord le parcours guidé',compare:'Termine d’abord le défi « Fichier ou API ? »',quiz:'Termine d’abord le quiz final'};
+const isLocked=s=>!!s.req&&!DONE[s.req]();
+let cur=null;
+
+/* ================= 3. SONS (Web Audio API) ================= */
+let ac=null;
+function audio(){
+  if(!S.sound)return null;
+  const A=window.AudioContext||window.webkitAudioContext; if(!A)return null;
+  if(!ac)ac=new A(); if(ac.state==='suspended')ac.resume();
+  return ac;
+}
+function tone(c,f,type,start,dur,vol){
+  const t=c.currentTime+start,o=c.createOscillator(),g=c.createGain();
+  o.type=type;o.frequency.setValueAtTime(f,t);
+  g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+.015);g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+  o.connect(g);g.connect(c.destination);o.start(t);o.stop(t+dur+.05);
+}
+/* « Ding » : deux notes claires montantes */
+function ding(){const c=audio();if(!c)return;tone(c,988,'sine',0,.5,.22);tone(c,1319,'sine',.1,.7,.2);}
+/* « Buzz » : deux dents de scie graves désaccordées */
+function buzz(){const c=audio();if(!c)return;tone(c,110,'sawtooth',0,.42,.14);tone(c,117,'sawtooth',0,.42,.14);}
+/* Petite fanfare pour les badges */
+function fanfare(){const c=audio();if(!c)return;[523,659,784,1047].forEach((f,i)=>tone(c,f,'triangle',.15+i*.11,.35,.16));}
+/* Petit « tic » aigu pour le bonus rapidité */
+function zap(){const c=audio();if(!c)return;tone(c,1568,'triangle',0,.18,.12);}
+
+/* ================= 4. EFFETS VISUELS ================= */
+function shake(el){if(!el)return;el.classList.remove('shake');void el.offsetWidth;el.classList.add('shake');setTimeout(()=>el.classList.remove('shake'),550);}
+function bump(el){if(!el)return;el.classList.remove('bump');void el.offsetWidth;el.classList.add('bump');}
+function toast(html,cls){
+  const t=document.createElement('div');t.className='toast'+(cls?' '+cls:'');t.innerHTML=html;$('#toasts').appendChild(t);
+  setTimeout(()=>{t.style.opacity='0';setTimeout(()=>t.remove(),400);},cls==='bdg'?3500:2000);
+}
+/* Confettis sur un canvas plein écran */
+function confetti(){
+  const c=$('#confetti'),x=c.getContext('2d');c.width=innerWidth;c.height=innerHeight;
+  const cols=['#4f46e5','#f59e0b','#16a34a','#db2777','#06b6d4','#facc15'];
+  const P=Array.from({length:150},()=>({x:c.width/2+(Math.random()-.5)*240,y:c.height*.35,vx:(Math.random()-.5)*14,vy:-Math.random()*13-4,s:6+Math.random()*7,c:pick(cols),r:Math.random()*3,vr:(Math.random()-.5)*.3}));
+  const t0=performance.now();
+  (function fr(now){
+    x.clearRect(0,0,c.width,c.height);
+    P.forEach(p=>{p.vy+=.32;p.x+=p.vx;p.y+=p.vy;p.r+=p.vr;x.save();x.translate(p.x,p.y);x.rotate(p.r);x.fillStyle=p.c;x.fillRect(-p.s/2,-p.s/4,p.s,p.s/2);x.restore();});
+    if(now-t0<3000)requestAnimationFrame(fr);else x.clearRect(0,0,c.width,c.height);
+  })(t0);
+}
+
+/* ================= 5. MASCOTTE ================= */
+const MOUTH={happy:'M44 61 Q60 79 76 61',sad:'M46 71 Q60 59 74 71',neutral:'M48 64 Q60 72 72 64'};
+let mT=null;
+function say(html,mood){
+  $('#bubT').innerHTML=html;$('#mascot').classList.remove('min');
+  const b=$('#bub');b.classList.remove('pop');void b.offsetWidth;b.classList.add('pop');
+  const m=$('#mascot');m.classList.remove('happy','sad');void m.offsetWidth;
+  $('#mouth').setAttribute('d',MOUTH[mood]||MOUTH.neutral);
+  if(mood==='happy'||mood==='sad')m.classList.add(mood);
+  clearTimeout(mT);mT=setTimeout(()=>{m.classList.remove('happy','sad');$('#mouth').setAttribute('d',MOUTH.neutral);},1800);
+}
+
+/* ================= 6. POINTS, PÉNALITÉS, BONUS, BADGES ================= */
+function addPoints(n,why,cls){
+  if(n<=0)return;S.points+=n;save();hud();bump($('#hPts'));
+  if(why)toast(`⭐ +${n} pt${n>1?'s':''} · ${why}`,cls);
+  if(S.points>=1000)award('collection');
+}
+/* Retire des points sans jamais descendre sous zéro ; renvoie le nombre réellement retiré */
+function removePoints(n,why){
+  const r=Math.min(n,S.points);
+  if(r>0){S.points-=r;save();hud();bump($('#hPts'));toast(`➖ −${r} pts · ${why}`,'neg');}
+  return r;
+}
+function award(id){
+  if(S.badges.includes(id))return;
+  const b=BADGES.find(x=>x.id===id);if(!b)return;
+  S.badges.push(id);save();
+  toast(`${b.ic} Badge débloqué : <b>${b.n}</b>`,'bdg');confetti();fanfare();
+  say(`Nouveau badge : ${b.ic} <b>${b.n}</b> ! ${b.d}`,'happy');
+  bump($('#hBdg'));addPoints(25);hud();
+  if(cur==='badges')rBadges();
+}
+function onCorrect(quiet){
+  ding();S.streak++;save();
+  if(!quiet)say(pick(HAPPY),'happy');
+  if(S.streak>=5)award('serie');
+}
+/* Réaction visuelle et sonore à une erreur (sans pénalité : utilisée aussi pour les saisies) */
+function onWrong(el,quiet){
+  buzz();shake(el);S.streak=0;save();
+  if(!quiet)say(pick(SAD),'sad');
+}
+/* Mauvaise réponse à une QUESTION : réaction + pénalité ; renvoie les points réellement retirés */
+function miss(el,quiet){
+  onWrong(el,quiet);S.errors++;save();
+  return removePoints(PENALTY,'Mauvaise réponse');
+}
+function feedback(fb,ok,html){fb.className='fb show '+(ok?'good':'bad');fb.innerHTML=(ok?'✅ ':'❌ ')+html;}
+
+/* Bonus rapidité.
+   Une petite jauge se vide en FAST_S secondes. Le compte à rebours démarre quand la question
+   devient visible à l’écran (utile pour les leçons longues où la question est en bas de page).
+   holder : élément où placer la jauge ; target : élément dont on surveille la visibilité.
+   stop(ok) renvoie true (et accorde le bonus) si ok est vrai et le délai respecté.
+   Seul le PREMIER appel à stop() compte : une bonne réponse après une erreur n’a pas de bonus. */
+function speedMeter(holder,target){
+  holder.innerHTML=`<div class="spd"><span class="spdL">⚡ Bonus rapidité : réponds juste en moins de ${FAST_S} s pour +${FAST_BONUS} pt</span><div class="sbar"><div></div></div></div>`;
+  const wrap=holder.firstElementChild,bar=$('.sbar div',wrap),lab=$('.spdL',wrap);
+  let t0=null,done=false,io=null,to=null;
+  const start=()=>{
+    if(t0!==null||done)return;
+    t0=performance.now();
+    void bar.offsetWidth; /* force le calcul de la largeur initiale avant l’animation */
+    bar.style.transition=`width ${FAST_S}s linear`;bar.style.width='0%';
+    to=setTimeout(()=>{if(!done){lab.textContent='⏳ Bonus rapidité expiré : prends le temps de bien répondre.';wrap.classList.add('off');}},FAST_S*1000);
+  };
+  if('IntersectionObserver' in window){
+    io=new IntersectionObserver(es=>{if(es.some(e=>e.isIntersecting)){start();io.disconnect();}},{threshold:.3});
+    io.observe(target);
+  }else start();
+  return{
+    stop(ok){
+      if(done)return false;
+      done=true;if(io)io.disconnect();clearTimeout(to);
+      if(t0===null)t0=performance.now(); /* réponse avant le démarrage : considérée comme immédiate */
+      const s=(performance.now()-t0)/1000,w=getComputedStyle(bar).width;
+      bar.style.transition='none';bar.style.width=w;
+      const fast=ok&&s<=FAST_S;
+      if(fast){
+        lab.textContent=`⚡ Réponse rapide (${sec(s)} s) : +${FAST_BONUS} pt bonus !`;wrap.classList.add('win');
+        zap();S.fast++;save();addPoints(FAST_BONUS,`Réponse rapide (${sec(s)} s)`,'fast');
+        if(S.fast>=5)award('rapide');
+      }else{
+        lab.textContent=ok?`🐢 Bonne réponse en ${sec(s)} s : pas de bonus rapidité.`:'Pas de bonus rapidité pour cette question.';
+        wrap.classList.add('off');
+      }
+      return fast;
+    }
+  };
+}
+
+/* QCM réutilisable.
+   o.mode 'retry' : on réessaie jusqu’à la bonne réponse ; 'single' : une seule tentative.
+   Chaque mauvaise réponse retire PENALTY points. Bonus rapidité si juste du premier coup en moins de FAST_S s.
+   o.cb(ok, {tries, lost, fast, timeout}) est appelé quand la question est terminée.
+   Renvoie un contrôleur { expire() } qui permet au chrono de clore la question (temps écoulé). */
+function mcq(box,q,o){
+  o=o||{};
+  const opts=shuffle(q.options.map((x,k)=>Object.assign({},x,{k})));
+  box.innerHTML=(o.title?`<h3 style="margin-top:0">${o.title}</h3>`:'')+`<p><b>${q.q}</b></p>${o.solved?'':'<div class="spdH"></div>'}<div>${opts.map(x=>`<button class="opt" data-k="${x.k}">${x.t}</button>`).join('')}</div><div class="fb" aria-live="polite"></div>`;
+  const btns=$$('.opt',box),fb=$('.fb',box),good=()=>btns.find(b=>q.options[b.dataset.k].ok);
+  const ctrl={expire(){}};
+  if(o.solved){const g=good();g.classList.add('good');btns.forEach(b=>b.disabled=true);feedback(fb,true,'<b>Déjà réussi.</b> '+q.options[g.dataset.k].why);return ctrl;}
+  const meter=speedMeter($('.spdH',box),box);
+  let tries=0,lost=0,fast=false,over=false;
+  const end=(ok,timeout)=>{over=true;btns.forEach(x=>x.disabled=true);o.cb&&o.cb(ok,{tries,lost,fast,timeout:!!timeout});};
+  btns.forEach(b=>b.addEventListener('click',()=>{
+    if(over)return;
+    const c=q.options[b.dataset.k];
+    if(meter.stop(!!c.ok))fast=true;
+    if(c.ok){
+      b.classList.add('good');feedback(fb,true,'<b>Bonne réponse !</b> '+c.why);onCorrect();end(true);
+    }else{
+      tries++;b.classList.add('bad');b.disabled=true;lost+=miss(box);
+      if(o.mode==='single'){
+        const g=good();g.classList.add('good');const go=q.options[g.dataset.k];
+        feedback(fb,false,`<b>Mauvaise réponse (−${PENALTY} pts).</b> `+c.why+'<br><b>Bonne réponse :</b> '+go.t+' — '+go.why);end(false);
+      }else feedback(fb,false,`<b>Pas tout à fait (−${PENALTY} pts).</b> `+c.why+' Essaie encore !');
+    }
+  }));
+  ctrl.expire=()=>{
+    if(over)return;
+    meter.stop(false);tries++;
+    const g=good();g.classList.add('good');const go=q.options[g.dataset.k];
+    lost+=miss(box);
+    feedback(fb,false,`<b>⏰ Temps écoulé (−${PENALTY} pts).</b> Bonne réponse : ${go.t} — ${go.why}`);
+    end(false,true);
+  };
+  return ctrl;
+}
+
+/* ================= 7. NAVIGATION ET EN-TÊTE ================= */
+function buildNav(){
+  $('#nav').innerHTML=SECTIONS.map(s=>`<button class="nb" data-s="${s.id}">${s.l}<span class="lki"></span></button>`).join('');
+  $$('.nb').forEach(b=>b.addEventListener('click',()=>show(b.dataset.s)));
+}
+function hud(){
+  $('#hName').textContent=S.name?'👤 '+S.name:'';
+  $('#hPts').textContent=`⭐ ${S.points} pts`;
+  $('#hBdg').textContent=`🏅 ${S.badges.length}/${BADGES.length}`;
+  $('#sndBtn').textContent=S.sound?'🔊':'🔇';
+  $$('.nb').forEach(b=>{const lk=isLocked(SECTIONS.find(x=>x.id===b.dataset.s));b.classList.toggle('lk',lk);$('.lki',b).textContent=lk?' 🔒':'';});
+}
+function visit(id){
+  if(!S.started||S.visited.includes(id))return;
+  S.visited.push(id);save();addPoints(5);
+  if(S.visited.length>=SECTIONS.length)award('explorateur');
+}
+const R={};
+function show(id){
+  const s=SECTIONS.find(x=>x.id===id);if(!s)return;
+  /* Étape verrouillée : on reste où l’on est */
+  if(isLocked(s)){buzz();shake($(`.nb[data-s="${id}"]`));say('🔒 '+NEED[s.req]+' pour débloquer cette étape.','sad');return;}
+  /* Déjà sur cette page avec une partie en cours : on ne réaffiche rien (évite de rejouer une question) */
+  if(id===cur&&((id==='quiz'&&QZ.on)||(id==='compare'&&SO.on))){scrollTo(0,0);return;}
+  /* Quitter une partie en cours l’abandonne (après confirmation) */
+  if(cur==='quiz'&&id!=='quiz'&&QZ.on){
+    if(!confirm('Quitter le quiz en cours ? Il faudra le recommencer depuis le début.'))return;
+    clearInterval(QZ.iv);QZ.on=false;toast('📝 Quiz interrompu');
+  }
+  if(cur==='compare'&&id!=='compare'){
+    if(SO.on){if(!confirm('Quitter le défi en cours ? Il faudra le recommencer.'))return;SO.on=false;SO.end=false;toast('🎯 Défi interrompu');}
+    simTimers.forEach(clearTimeout);simTimers=[];
+  }
+  if(id==='guided'&&cur!=='guided')gEnd=false;
+  cur=id;
+  $$('.sec').forEach(x=>x.classList.toggle('on',x.id==='sec-'+id));
+  $$('.nb').forEach(b=>b.classList.toggle('on',b.dataset.s===id));
+  R[id]();say(SAY[id],'neutral');visit(id);scrollTo(0,0);
+}
+
+/* ================= 8. ACCUEIL ================= */
+R.home=function(){
+  const el=$('#sec-home'),steps=SECTIONS.filter(s=>s.req);
+  const next=steps.find(s=>!DONE[s.id]())||steps[steps.length-1];
+  el.innerHTML=`<div class="card hero">
+    <h1>Bienvenue dans Transfert Quest 📦</h1>
+    <p class="lead">Découvre en jouant comment les entreprises s’échangent des fichiers avec le <b>FTP</b> et le <b>SFTP</b>, comment utiliser un client comme <b>FileZilla</b>, et en quoi cela diffère d’une <b>API</b>. Aucune connaissance préalable n’est nécessaire !</p>
+    ${S.started?`<p>Bon retour, <b>${esc(S.name)}</b> ! ${S.points} points et ${S.badges.length} badge(s).</p><button class="btn" id="cont">Continuer : ${next.l} →</button>`
+    :`<label class="lbl" for="nIn">Comment t’appelles-tu ?</label><div class="row" id="nRow"><input id="nIn" class="inp" maxlength="40" placeholder="Ton prénom ou pseudo"><button class="btn" id="go">C’est parti ! 🚀</button></div><p class="sm mu" style="margin-top:8px">Ton nom figurera sur ton certificat.</p>`}
+  </div>
+  <div class="card"><h2>🗺️ Ton parcours</h2>
+    <p>Chaque étape se débloque quand la précédente est terminée. Le 📖 <b>glossaire</b> et les 🏅 <b>badges</b> restent accessibles à tout moment.</p>
+    <ul class="plist">${steps.map(s=>`<li>${DONE[s.id]()?'✅':isLocked(s)?'🔒':'▶️'} <b>${s.l}</b></li>`).join('')}</ul></div>
+  <div class="card"><h2>⭐ Règles des points</h2>
+    <ul><li>✅ Bonne réponse, démo lancée, mission réussie, terme du glossaire consulté, badge débloqué : <b>des points gagnés</b>.</li>
+    <li>⚡ <b>Bonus rapidité : +${FAST_BONUS} point</b> si tu donnes la bonne réponse du premier coup en moins de ${FAST_S} secondes (le compte à rebours démarre quand la question apparaît à l’écran). Plus lent : pas de bonus, mais pas de pénalité non plus.</li>
+    <li>❌ <b>Chaque mauvaise réponse retire ${PENALTY} points.</b> Ton total ne descend jamais sous zéro.</li>
+    <li>⏱️ <b>Quiz final :</b> dès la question ${QUIZ_CHRONO_FROM}, un chrono de ${QUIZ_LIMIT} secondes par question se lance. Temps écoulé = mauvaise réponse.</li></ul>
+    <p class="sm mu">💡 Les mots ${T('protocole','soulignés comme celui-ci')} ouvrent leur définition. Ta progression est sauvegardée dans ce navigateur (bouton ↺ pour recommencer).</p></div>`;
+  if(S.started){$('#cont').onclick=()=>show(next.id);return;}
+  const inp=$('#nIn');
+  const start=()=>{
+    const n=inp.value.trim();
+    if(!n){onWrong($('#nRow'),true);say('J’ai besoin de ton prénom (ou d’un pseudo) !','sad');inp.focus();return;}
+    S.started=true;S.name=n;save();hud();visit('home');award('premiers_pas');show('guided');
+  };
+  $('#go').onclick=start;inp.addEventListener('keydown',e=>{if(e.key==='Enter')start();});
+};
+
+/* ================= 9. PARCOURS GUIDÉ ================= */
+let gEnd=false;
+R.guided=function rGuided(){
+  const el=$('#sec-guided');
+  if(gEnd){
+    el.innerHTML=`<div class="card c"><div class="huge">🎓</div><h1>Parcours guidé terminé !</h1>
+      <p class="lead">Bravo ${esc(S.name)} ! L’étape suivante est <b>débloquée</b> : compare maintenant les échanges de fichiers et les API.</p>
+      <button class="btn" id="gNext">② 🔀 Fichiers vs API →</button>
+      <p style="margin-top:14px"><button class="btn gh" id="rev">Revoir les leçons</button></p></div>`;
+    $('#gNext').onclick=()=>show('compare');
+    $('#rev').onclick=()=>{gEnd=false;S.step=0;save();rGuided();};
+    return;
+  }
+  const i=Math.min(S.step,LESSONS.length-1),L=LESSONS[i],done=!!S.ans[i],last=i===LESSONS.length-1;
+  el.innerHTML=`${S.guidedDone?'<div class="note okn">✅ Parcours terminé : tu peux revoir les leçons librement.</div>':''}
+  <div class="card">
+    <div class="prog"><div style="width:${(i+1)/LESSONS.length*100}%"></div></div>
+    <div class="dots">${LESSONS.map((l,k)=>`<button class="dot${k===i?' cur':''}${S.ans[k]?' dn':''}" data-k="${k}" ${k===0||S.ans[k-1]?'':'disabled'} title="${k===0||S.ans[k-1]?'':'Termine l’étape précédente pour débloquer'}" aria-label="Étape ${k+1}">${k===0||S.ans[k-1]?k+1:'🔒'}</button>`).join('')}</div>
+    <p class="eye">Étape ${i+1} sur ${LESSONS.length}</p>
+    <h2>${L.icon} ${L.title}</h2>${L.html}
+    ${L.demo?'<div id="demo"></div>':''}
+    <div class="qbox" id="qb"></div>
+    <div class="nav2"><button class="btn gh" id="prv" ${i?'':'disabled'}>← Précédent</button><button class="btn" id="nxt" ${done?'':'disabled'}>${last?'Terminer le parcours 🎓':'Étape suivante →'}</button></div>
+    <p class="sm mu c" id="hint" style="margin-top:8px">${done?'':`🔒 Réponds correctement pour débloquer l’étape suivante. +20 pts du premier coup, +10 ensuite, ⚡ +${FAST_BONUS} si rapide, −${PENALTY} par erreur.`}</p>
+  </div>`;
+  if(L.demo)DEMOS[L.demo]($('#demo'));
+  mcq($('#qb'),L.q,{mode:'retry',solved:done,title:'🧠 Vérifie ta compréhension',cb:(ok,info)=>{
+    if(!S.ans[i]){S.ans[i]=true;save();addPoints(info.tries?10:20,info.tries?'Bonne réponse':'Du premier coup !');}
+    $('#nxt').disabled=false;$('#hint').textContent='🔓 Étape suivante débloquée !';
+    $(`.dot[data-k="${i}"]`).classList.add('dn');
+    const nd=$(`.dot[data-k="${i+1}"]`);if(nd){nd.disabled=false;nd.textContent=i+2;nd.title='';}
+  }});
+  const go=k=>{S.step=k;save();rGuided();scrollTo(0,0);};
+  $$('.dot',el).forEach(d=>d.onclick=()=>go(+d.dataset.k));
+  $('#prv').onclick=()=>go(i-1);
+  $('#nxt').onclick=()=>{
+    if(!last){go(i+1);return;}
+    gEnd=true;rGuided();scrollTo(0,0);
+    if(!S.guidedDone){S.guidedDone=true;save();hud();award('diplome');}
+    else say('Révision terminée ! On continue ?','happy');
+  };
+};
+
+/* --- Démos du parcours --- */
+const gib=n=>{const c='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=#%&';let s='';for(let i=0;i<n;i++)s+=c[Math.floor(Math.random()*c.length)];return s;};
+const DEMOS={
+  /* Un fichier qui voyage entre client et serveur */
+  cs(z){
+    z.innerHTML=`<div class="demo"><b>🔬 Démo : le voyage d’un fichier</b>
+      <div class="net"><div class="node">💻<span>Client</span></div><div class="wire"><span class="pkt" id="pk">📄 rapport.csv</span></div><div class="node">🗄️<span>Serveur</span></div></div>
+      <div class="row"><button class="btn soft" data-d="r">⬆️ Déposer (upload)</button><button class="btn soft" data-d="l">⬇️ Récupérer (download)</button></div>
+      <p class="mu" id="cap" style="margin:10px 0 0">Clique sur un bouton pour voir le fichier voyager.</p></div>`;
+    $$('[data-d]',z).forEach(b=>b.onclick=()=>{
+      const p=$('#pk',z);p.className='pkt';void p.offsetWidth;p.classList.add(b.dataset.d);
+      $('#cap',z).innerHTML=b.dataset.d==='r'?'Le client <b>dépose</b> un fichier sur le serveur : c’est un <b>upload</b>.':'Le client <b>récupère</b> un fichier du serveur : c’est un <b>download</b>.';
+      if(once('cs'))addPoints(5,'Première démo lancée');
+    });
+  },
+  spyF(z){spy(z,true);},
+  spyS(z){spy(z,false);},
+  fz(z){fzDemo(z);}
+};
+/* Ce que voit un espion sur le réseau, en FTP ou en SFTP */
+function spy(z,ftp){
+  z.innerHTML=`<div class="demo"><b>🔬 Démo : que voit un espion sur le réseau ?</b>
+    <div class="net"><div class="node">💻<span>Client</span></div><div class="wire"><div class="spy">🕵️</div><span class="pkt" id="pk"></span></div><div class="node">🗄️<span>Serveur ${ftp?'FTP':'SFTP'}</span></div></div>
+    <button class="btn ${ftp?'red':'green'}" id="sb">▶ Lancer une connexion ${ftp?'FTP':'SFTP'}</button>
+    <div class="scr" id="sc">🖥️ Écran de l’espion : en attente de trafic…</div></div>`;
+  const b=$('#sb',z),p=$('#pk',z),sc=$('#sc',z);
+  b.onclick=()=>{
+    b.disabled=true;p.textContent=ftp?'PASS Soleil2024!':'🔒 '+gib(14);
+    p.className='pkt '+(ftp?'clr':'enc');void p.offsetWidth;p.classList.add('r');
+    sc.textContent='Capture en cours…';
+    const lines=ftp?['USER marie.dupont','PASS Soleil2024!','RETR clients.csv','> Martin;l.martin@mail.fr;06 12 34 56 78']:[gib(32),gib(32),gib(32),gib(32)];
+    setTimeout(()=>{
+      sc.innerHTML='';
+      lines.forEach((l,k)=>setTimeout(()=>{
+        const d=document.createElement('div');d.textContent=l;sc.appendChild(d);
+        if(k<lines.length-1)return;
+        const v=document.createElement('div');v.style.cssText='margin-top:8px;font-weight:bold;font-family:system-ui;color:'+(ftp?'#fca5a5':'#93c5fd');
+        v.textContent=ftp?'😈 « Merci pour l’identifiant, le mot de passe et les données clients ! »':'😵 « Je ne comprends rien, tout est chiffré ! »';
+        sc.appendChild(v);b.disabled=false;
+        if(ftp){say('En FTP, le mot de passe voyage comme une carte postale : lisible par tous ! 😱','sad');if(once('spyF')){addPoints(10,'Interception observée');award('espion');}}
+        else{say('Avec le SFTP, l’espion ne voit que du charabia 🔒','happy');if(once('spyS'))addPoints(10,'Chiffrement observé');}
+      },k*350));
+    },1200);
+  };
+}
+
+/* Fenêtre FileZilla interactive (simulation, rien n’est réellement envoyé).
+   Les erreurs de manipulation ici ne coûtent pas de points : ce n’est pas une question. */
+function fzDemo(z){
+  const HOST='sftp.boutique-exemple.fr',FP='SHA256:p2QAMXNIC1TJYWeIOttrVc98/R1BUFWu3/LiyKgUfQM',LP='C:\\Users\\marie\\Documents\\';
+  const SIZE={'ventes.csv':'48 213','stocks.csv':'12 044','catalogue.csv':'12 480','photo_vitrine.jpg':'2 304 118'};
+  const rem={'/':{d:['export','import'],f:[]},'/export':{d:[],f:['ventes.csv','stocks.csv']},'/import':{d:[],f:[]}};
+  const loc=['catalogue.csv','photo_vitrine.jpg'];
+  let con=false,cwd='/',selL=null,selR=null,nOk=0,trust=false,credOk=false;
+  z.innerHTML=`<div class="mis"><b>🎯 Mission FileZilla</b> <span class="sm mu">(fenêtre simulée : rien n’est réellement envoyé, et les erreurs ici ne coûtent pas de points)</span>
+    <p class="sm" style="margin:6px 0">📋 Informations transmises par le partenaire : hôte <code>${HOST}</code> · utilisateur <code>marie</code> · mot de passe <code>Octet2026!</code> · port <code>22</code> · empreinte du serveur <code>SHA256:p2QAMX…KgUfQM</code></p>
+    <div id="fo"></div>
+    <p class="sm mu" style="margin:6px 0 0">💡 Clique sur un dossier distant pour l’ouvrir. Sélectionne un fichier puis utilise le bouton « Envoyer » ou « Télécharger » (ou double-clique sur le fichier).</p></div>
+  <div class="fz" id="fzw">
+    <div class="fz-title"><span><b class="fzl">Fz</b> FileZilla</span><span class="fz-ctl">─ ☐ ✕</span></div>
+    <div class="fz-menu">Fichier Édition Affichage Transfert Serveur Favoris Aide</div>
+    <form class="fz-qc" id="fzq" autocomplete="off">
+      <label>Hôte : <input id="fzH" placeholder="sftp://…" spellcheck="false"></label>
+      <label>Nom d’utilisateur : <input id="fzU" spellcheck="false"></label>
+      <label>Mot de passe : <input id="fzP" type="password" autocomplete="new-password"></label>
+      <label>Port : <input id="fzPo" class="s" inputmode="numeric"></label>
+      <button class="fz-b pri">Connexion rapide</button>
+      <button type="button" class="fz-b" id="fzX" disabled>Déconnecter</button>
+    </form>
+    <div class="fz-log" id="fzLog" aria-live="polite"></div>
+    <div class="fz-panes">
+      <div class="fz-pane"><div class="fz-path">Site local : ${LP}</div><div class="fz-row fz-head"><span>Nom de fichier</span><span>Taille (octets)</span></div><div class="fz-list" id="fzL"></div><div class="fz-act"><button type="button" class="fz-b" id="fzUp">⬆ Envoyer vers le serveur</button></div></div>
+      <div class="fz-pane"><div class="fz-path">Site distant : <span id="fzRp"></span></div><div class="fz-row fz-head"><span>Nom de fichier</span><span>Taille (octets)</span></div><div class="fz-list" id="fzR"></div><div class="fz-act"><button type="button" class="fz-b" id="fzDl">⬇ Télécharger sur mon poste</button></div></div>
+    </div>
+    <div class="fz-queue"><div class="fz-tabs"><span>Fichiers en file d’attente (0)</span><span>Transferts échoués (0)</span><span class="on">Transferts réussis (<b id="fzOk">0</b>)</span></div><div class="fz-ql" id="fzQ"></div></div>
+    <div class="fz-dlg hid" id="fzDlg"><div role="dialog" aria-label="Clé de l’hôte inconnue">
+      <div class="fz-title"><span>Clé de l’hôte inconnue</span><span>✕</span></div>
+      <div class="in">
+        <p>La clé de l’hôte du serveur est inconnue. Vous n’avez aucune garantie que le serveur est l’ordinateur que vous pensez qu’il est.</p>
+        <p>Détails :<br>Hôte : ${HOST}:22<br>Algorithme de clé de l’hôte : ssh-ed25519 255<br>Empreinte : <span class="fp">${FP}</span></p>
+        <p>Faire confiance à cet hôte et poursuivre la connexion ?</p>
+        <label><input type="checkbox" id="fzTr" style="width:auto"> Toujours faire confiance à cet hôte, ajouter cette clé au cache</label>
+      </div>
+      <div class="ft"><button type="button" class="fz-b pri" id="fzA">OK</button><button type="button" class="fz-b" id="fzN">Annuler</button></div>
+    </div></div>
+  </div>`;
+  const logEl=$('#fzLog',z),win=$('#fzw',z);
+  const log=(t,c)=>{const d=document.createElement('div');d.className=c||'st';d.textContent=t;logEl.appendChild(d);logEl.scrollTop=logEl.scrollHeight;};
+  const fail=(m,tip)=>{log(m,'er');onWrong(win,true);say(tip||'Regarde le journal des messages : il indique le problème.','sad');};
+  /* Objectifs de la mission */
+  const obj=()=>{
+    const O=[['fzC','Se connecter en SFTP (port 22) après avoir vérifié l’empreinte du serveur'],['fzU','Déposer <code>catalogue.csv</code> dans le dossier distant <code>import</code>'],['fzD','Récupérer <code>ventes.csv</code> depuis le dossier distant <code>export</code>']];
+    $('#fo',z).innerHTML=O.map(([f,t])=>`<div class="sm">${S.flags[f]?'✅':'⬜'} ${t}</div>`).join('');
+  };
+  const check=()=>{obj();if(S.flags.fzC&&S.flags.fzU&&S.flags.fzD&&once('fzDone')){addPoints(20,'Mission FileZilla réussie');award('pilote');}};
+  /* Affichage des deux panneaux */
+  const row=(n,s,sel,k)=>`<div class="fz-row${sel?' sel':''}" data-k="${k}" data-n="${esc(n)}"><span>${k==='d'||k==='u'?'📁':'📄'} ${esc(n)}</span><span>${s}</span></div>`;
+  function lists(){
+    $('#fzL',z).innerHTML=loc.map(f=>row(f,SIZE[f]||'—',selL===f,'l')).join('');
+    if(!con){$('#fzR',z).innerHTML='<div class="fz-row mu"><span>Non connecté à un serveur</span><span></span></div>';$('#fzRp',z).textContent='';return;}
+    $('#fzRp',z).textContent=cwd;
+    const D=rem[cwd];
+    $('#fzR',z).innerHTML=(cwd!=='/'?row('..','',false,'u'):'')+D.d.map(d=>row(d,'Dossier',false,'d')).join('')+D.f.map(f=>row(f,SIZE[f]||'—',selR===f,'r')).join('')+(D.d.length+D.f.length?'':'<div class="fz-row mu"><span>Dossier vide</span><span></span></div>');
+  }
+  function openDir(){log('Statut : Récupération du contenu du dossier « '+cwd+' »…');log('Statut : Contenu du dossier « '+cwd+' » affiché avec succès');lists();}
+  const pickRow=(list,r)=>{$$('.fz-row',list).forEach(x=>x.classList.remove('sel'));r.classList.add('sel');};
+  /* Connexion rapide */
+  $('#fzq',z).addEventListener('submit',e=>{
+    e.preventDefault();
+    if(con)disc();
+    const raw=$('#fzH',z).value.trim().toLowerCase(),u=$('#fzU',z).value.trim(),p=$('#fzP',z).value,po=$('#fzPo',z).value.trim();
+    const isS=raw.startsWith('sftp://'),isF=raw.startsWith('ftp://'),h=raw.replace(/^s?ftp:\/\//,'').replace(/\/+$/,'');
+    if(!h){fail('Erreur : Veuillez saisir un hôte.','Commence par l’hôte : l’adresse du serveur fournie par le partenaire.');return;}
+    if(h!==HOST){log('Statut : Résolution de l’adresse de '+h);fail('Erreur : Impossible de résoudre l’hôte « '+h+' »','Vérifie l’orthographe de l’adresse du serveur, lettre par lettre.');return;}
+    const port=po||(isS?'22':'21'); /* sans port ni préfixe, FileZilla tente du FTP (port 21) */
+    if(isF||port!=='22'){log('Statut : Connexion à '+HOST+':'+port+'…');fail('Erreur : Connexion refusée. Ce serveur n’accepte que le SFTP (port 22).',(isF||port==='21')?'Port 21 ou ftp:// = FTP non chiffré ! Pour du SFTP, indique le port 22 🔒':'Mauvais port : le SFTP utilise le port 22.');return;}
+    if(!u||!p){fail('Erreur : Nom d’utilisateur ou mot de passe manquant.','Il manque l’identifiant ou le mot de passe.');return;}
+    credOk=u==='marie'&&p==='Octet2026!';
+    log('Statut : Connexion à '+HOST+':22…');
+    if(trust){accept();return;}
+    $('#fzDlg',z).classList.remove('hid');
+    say('Première connexion : compare l’empreinte affichée avec celle du partenaire avant de cliquer sur OK 🔍','neutral');
+  });
+  function accept(){
+    $('#fzDlg',z).classList.add('hid');
+    if($('#fzTr',z).checked)trust=true;
+    log('Statut : Utilisation du nom d’utilisateur « '+$('#fzU',z).value.trim()+' ».');
+    if(!credOk){fail('Erreur : Échec de l’authentification','Identifiant ou mot de passe incorrect. Recopie bien les informations du partenaire.');return;}
+    con=true;cwd='/';selR=null;$('#fzX',z).disabled=false;
+    log('Statut : Connecté à '+HOST,'rp');openDir();
+    if(once('fzC')){addPoints(10,'Connexion SFTP réussie');onCorrect(true);}
+    say('Connecté en SFTP 🔒 ! Tout ce qui circule maintenant est chiffré.','happy');
+    check();
+  }
+  function disc(){con=false;selR=null;$('#fzX',z).disabled=true;log('Statut : Déconnecté du serveur');lists();}
+  $('#fzA',z).onclick=accept;
+  $('#fzN',z).onclick=()=>{$('#fzDlg',z).classList.add('hid');log('Erreur : Connexion annulée : clé de l’hôte refusée.','er');say('Refuser une empreinte qui ne correspond pas est le bon réflexe. Ici, compare-la à celle du partenaire : elle est identique.','neutral');};
+  $('#fzX',z).onclick=disc;
+  /* Ajoute une ligne dans « Transferts réussis » */
+  const queue=t=>{nOk++;$('#fzOk',z).textContent=nOk;const d=document.createElement('div');d.textContent=t+' · Réussi';$('#fzQ',z).prepend(d);};
+  /* Envoi (upload) */
+  function up(){
+    if(!con){fail('Erreur : Non connecté. Utilise d’abord « Connexion rapide ».','Connecte-toi d’abord au serveur.');return;}
+    if(!selL){log('Statut : Sélectionne d’abord un fichier dans le panneau « Site local ».');return;}
+    const f=selL,dst=(cwd==='/'?'':cwd)+'/'+f;
+    log('Statut : Début de l’envoi de '+LP+f);
+    log('Statut : Transfert de fichier réussi, '+(SIZE[f]||'?')+' octets transférés','rp');
+    if(!rem[cwd].f.includes(f))rem[cwd].f.push(f);
+    queue('⬆ '+LP+f+' → '+dst);lists();
+    if(f==='catalogue.csv'){
+      if(cwd==='/import'){if(once('fzU')){addPoints(10,'Fichier déposé (upload)');onCorrect();}}
+      else say('Envoyé… mais pas au bon endroit ! La mission demande le dossier distant import.','neutral');
+    }
+    check();
+  }
+  /* Téléchargement (download) */
+  function down(){
+    if(!con){fail('Erreur : Non connecté. Utilise d’abord « Connexion rapide ».','Connecte-toi d’abord au serveur.');return;}
+    if(!selR){log('Statut : Sélectionne d’abord un fichier dans le panneau « Site distant ».');return;}
+    const f=selR,src=(cwd==='/'?'':cwd)+'/'+f;
+    log('Statut : Début du téléchargement de '+src);
+    log('Statut : Transfert de fichier réussi, '+(SIZE[f]||'?')+' octets transférés','rp');
+    if(!loc.includes(f))loc.push(f);
+    queue('⬇ '+src+' → '+LP+f);lists();
+    if(f==='ventes.csv'&&cwd==='/export'&&once('fzD')){addPoints(10,'Fichier récupéré (download)');onCorrect();}
+    check();
+  }
+  $('#fzUp',z).onclick=up;$('#fzDl',z).onclick=down;
+  /* Clics dans les panneaux */
+  $('#fzL',z).addEventListener('click',e=>{const r=e.target.closest('.fz-row');if(!r||!r.dataset.n)return;selL=r.dataset.n;pickRow($('#fzL',z),r);});
+  $('#fzL',z).addEventListener('dblclick',e=>{const r=e.target.closest('.fz-row');if(r&&r.dataset.n){selL=r.dataset.n;up();}});
+  $('#fzR',z).addEventListener('click',e=>{
+    const r=e.target.closest('.fz-row');if(!r||!r.dataset.k)return;
+    const k=r.dataset.k,n=r.dataset.n;
+    if(k==='u'){cwd='/';selR=null;openDir();}
+    else if(k==='d'){cwd='/'+n;selR=null;openDir();}
+    else{selR=n;pickRow($('#fzR',z),r);}
+  });
+  $('#fzR',z).addEventListener('dblclick',e=>{const r=e.target.closest('.fz-row');if(r&&r.dataset.k==='r'){selR=r.dataset.n;down();}});
+  obj();log('Statut : Prêt. Saisis les informations du partenaire puis clique sur « Connexion rapide ».');lists();
+}
+
+/* ================= 10. FICHIERS vs API ================= */
+let simTimers=[];
+let SO={on:false,end:false,i:0,sc:0,err:0,ord:[],ans:false};
+R.compare=function(){
+  const el=$('#sec-compare');
+  el.innerHTML=`${DONE.compare()?'':'<div class="note warn">🎯 Pour débloquer l’étape suivante (quiz final), termine le défi « Fichier ou API ? » en bas de page.</div>'}
+  <div class="card"><h1>🔀 Fichiers (FTP/SFTP) ou API ?</h1>
+    <p class="lead">Deux applications doivent partager des informations. Deux grandes approches existent, souvent complémentaires.</p>
+    <div class="g2">
+      <div class="cf"><h3 style="margin-top:0">📁 L’échange de fichiers</h3><p><b>📮 Analogie : la boîte aux lettres partagée.</b></p>
+        <p>Un système produit un fichier complet (ex. : un ${T('csv','CSV')} de toutes les ventes du jour) et le dépose sur un serveur SFTP. Plus tard, l’autre système vient le chercher et le traite en une fois : c’est le ${T('batch','traitement par lots')}.</p>
+        <ul><li>✅ Idéal pour les gros volumes</li><li>✅ Simple, même avec des systèmes anciens</li><li>✅ Les deux systèmes n’ont pas besoin d’être actifs en même temps</li><li>⚠️ Pas de temps réel</li><li>⚠️ Erreurs parfois découvertes tard</li></ul></div>
+      <div class="ca"><h3 style="margin-top:0">🔌 L’API</h3><p><b>🍽️ Analogie : le serveur au restaurant.</b></p>
+        <p>Une application pose une question précise (« Quel est le stock du SAC-123 ? ») à une adresse appelée ${T('endpoint','endpoint')}, via ${T('https','HTTPS')}, avec un ${T('token','jeton')}. La réponse arrive aussitôt, souvent en ${T('json','JSON')}.</p>
+        <ul><li>✅ Temps réel</li><li>✅ Données toujours à jour</li><li>✅ Erreurs signalées immédiatement (200, 404, 500…)</li><li>⚠️ Moins adaptée aux énormes volumes</li><li>⚠️ Plus de développement des deux côtés</li></ul></div>
+    </div></div>
+  <div class="card"><h2>▶️ Simule les deux échanges</h2>
+    <div class="row"><button class="btn" id="sF">📁 Simuler un dépôt SFTP</button><button class="btn green" id="sA">🔌 Simuler un appel d’API</button></div>
+    <div class="g2" style="margin-top:14px"><div><h4 id="sT">Journal des étapes</h4><ol class="slog" id="sL"><li class="mu">Choisis une simulation…</li></ol></div>
+    <div><h4>Ce qui circule</h4><pre class="log" id="sP">—</pre></div></div></div>
+  <div class="card"><h2>📊 Le comparatif</h2><div class="tbl"><table>
+    <thead><tr><th>Critère</th><th>📁 FTP / SFTP</th><th>🔌 API</th></tr></thead><tbody>
+    <tr><td><b>Ce qu’on échange</b></td><td>Un fichier complet</td><td>Un message court : question / réponse</td></tr>
+    <tr><td><b>Déclenchement</b></td><td>Planifié (ex. : chaque nuit)</td><td>À la demande, à chaque événement</td></tr>
+    <tr><td><b>Délai</b></td><td>Minutes ou heures</td><td>Millisecondes</td></tr>
+    <tr><td><b>Volume</b></td><td>Très gros, d’un coup</td><td>Petit, mais fréquent</td></tr>
+    <tr><td><b>Formats</b></td><td>CSV, XML, images, PDF</td><td>JSON (parfois XML)</td></tr>
+    <tr><td><b>Sécurité</b></td><td>SFTP : SSH, clés</td><td>HTTPS + jeton</td></tr>
+    <tr><td><b>Outils</b></td><td>FileZilla, WinSCP, scripts planifiés</td><td>Applications, plateformes d’intégration</td></tr>
+    <tr><td><b>Erreurs</b></td><td>Détectées au traitement</td><td>Code de réponse immédiat</td></tr></tbody></table></div>
+    <div class="ins">💡 <b>Ce n’est pas l’un OU l’autre.</b> L’API pour l’instantané, le SFTP pour le volumineux et le planifié. La bonne question : <i>« De quoi ai-je besoin, en quelle quantité, à quelle vitesse ? »</i></div></div>
+  <div class="card" id="sortC"></div>`;
+  $('#sF').onclick=()=>sim('sftp');$('#sA').onclick=()=>sim('api');
+  rSort();
+};
+function sim(k){
+  simTimers.forEach(clearTimeout);simTimers=[];
+  const s=SIMS[k],L=$('#sL');$('#sT').textContent=s.title;L.innerHTML='';$('#sP').textContent=s.payload;
+  s.steps.forEach((t,i)=>simTimers.push(setTimeout(()=>{
+    const li=document.createElement('li');li.textContent=t;L.appendChild(li);
+    if(i<s.steps.length-1)return;
+    say(k==='sftp'?'Le fichier attend tranquillement qu’on vienne le chercher : pas besoin que les deux systèmes soient actifs en même temps.':'Moins d’une seconde entre la question et la réponse : la force des API ⚡','happy');
+    if(once('sim_'+k))addPoints(10,'Simulation observée');
+    if(S.flags.sim_sftp&&S.flags.sim_api)award('observateur');
+  },600*i+200)));
+}
+/* Défi « Fichier ou API ? » : le terminer débloque le quiz final */
+function rSort(){
+  const c=$('#sortC');if(!c)return;
+  const start=()=>{SO={on:true,end:false,i:0,sc:0,err:0,ord:shuffle(CASES),ans:false};rSort();};
+  if(!SO.on){
+    c.innerHTML=SO.end?`<h2>🎯 Défi terminé !</h2><p class="score">${SO.sc} / ${CASES.length}</p>
+      <p>${SO.sc===CASES.length?'Sans faute ! 🏆':SO.sc>=6?'Très bien : volume et planification → fichier ; immédiateté → API.':'Relis le comparatif et retente : la clé, c’est l’urgence et le volume.'}</p>
+      <p class="sm mu">${SO.err?`${SO.err} erreur(s) : −${SO.err*PENALTY} pts.`:'Aucune erreur, aucune pénalité !'} Meilleur score : ${S.sortBest}/${CASES.length}</p>
+      <div class="row"><button class="btn gh" id="sGo">↺ Rejouer</button><button class="btn" id="sQ">③ 📝 Passer au quiz final →</button></div>`
+    :`<h2>🎯 Défi : fichier ou API ?</h2><p>Pour chacune des ${CASES.length} situations, choisis la solution la plus adaptée. ${S.sortBest>=0?`Meilleur score : <b>${S.sortBest}/${CASES.length}</b>.`:'+15 points par bonne réponse lors de ta première partie ; 6/8 débloque un badge. <b>Terminer le défi débloque le quiz final.</b>'}</p>
+      <p class="sm"><b>⚡ +${FAST_BONUS} pt si tu réponds juste en moins de ${FAST_S} s · ❌ −${PENALTY} pts par erreur.</b></p>
+      <div class="row"><button class="btn" id="sGo">${S.sortBest>=0?'Rejouer':'Commencer le défi'}</button>${S.sortBest>=0?'<button class="btn soft" id="sQ">③ 📝 Quiz final →</button>':''}</div>`;
+    $('#sGo').onclick=start;
+    const q=$('#sQ');if(q)q.onclick=()=>show('quiz');
+    return;
+  }
+  const cs=SO.ord[SO.i];
+  c.innerHTML=`<h2>🎯 Défi : fichier ou API ?</h2><p class="eye">Situation ${SO.i+1} / ${CASES.length} · Score : ${SO.sc} · Erreurs : ${SO.err}</p>
+    <div class="prog"><div style="width:${SO.i/CASES.length*100}%"></div></div>
+    <div class="case" id="caseC">${cs.t}</div>
+    <div id="spdH"></div>
+    <div class="row jc"><button class="btn big" data-a="file">📁 Fichier (SFTP)</button><button class="btn big green" data-a="api">🔌 API</button></div>
+    <div class="fb" id="sFb"></div><div class="c" style="margin-top:12px"><button class="btn soft hid" id="sN">${SO.i===CASES.length-1?'Voir mon score 🏁':'Situation suivante →'}</button></div>`;
+  const meter=speedMeter($('#spdH',c),$('#caseC',c));
+  $$('[data-a]',c).forEach(b=>b.onclick=()=>{
+    if(SO.ans)return;SO.ans=true;$$('[data-a]',c).forEach(x=>x.disabled=true);
+    const ok=b.dataset.a===cs.a;
+    meter.stop(ok);
+    feedback($('#sFb'),ok,ok?'<b>Bonne réponse !</b> '+cs.why:`<b>Pas tout à fait (−${PENALTY} pts).</b> Meilleure option : `+(cs.a==='file'?'📁 fichier (SFTP)':'🔌 API')+'. '+cs.why);
+    if(ok){SO.sc++;onCorrect();if(S.sortBest<0)addPoints(15);}else{SO.err++;miss($('#caseC'));}
+    $('#sN').classList.remove('hid');$('#sN').focus();
+  });
+  $('#sN').onclick=()=>{
+    SO.i++;SO.ans=false;
+    if(SO.i>=CASES.length){
+      const first=S.sortBest<0;
+      SO.on=false;SO.end=true;S.sortBest=Math.max(S.sortBest,SO.sc);save();hud();rSort();
+      if(SO.sc>=6)award('architecte');
+      if(first)say('🔓 Étape suivante débloquée : le quiz final !','happy');
+      return;
+    }
+    rSort();
+  };
+}
+
+/* ================= 11. QUIZ FINAL =================
+   - Points à chaque bonne réponse, pénalité à chaque erreur, bonus rapidité.
+   - Dès la question QUIZ_CHRONO_FROM, chaque question a QUIZ_LIMIT secondes ; temps écoulé = mauvaise réponse.
+   - À la fin, le certificat s’affiche automatiquement avec le score final. */
+let QZ={on:false,i:0,sc:0,ord:[],gain:0,lost:0,fast:0,to:0,errs:[],iv:null};
+const startQuiz=()=>{clearInterval(QZ.iv);QZ={on:true,i:0,sc:0,ord:shuffle(QUIZ),gain:0,lost:0,fast:0,to:0,errs:[],iv:null};R.quiz();scrollTo(0,0);};
+R.quiz=function(){
+  const el=$('#sec-quiz'),per=S.quizPlays?10:20;
+  if(!QZ.on){
+    el.innerHTML=`<div class="card"><h1>📝 Quiz final</h1><p class="lead">${QUIZ.length} questions pour valider tes connaissances. Une seule tentative par question, avec une explication à chaque fois.</p>
+      <ul><li>✅ <b>+${per} points par bonne réponse</b>${S.quizPlays?' (tentatives suivantes)':' lors de ta première tentative (+10 ensuite)'}.</li>
+      <li>⚡ <b>+${FAST_BONUS} point bonus</b> si tu réponds juste en moins de ${FAST_S} secondes.</li>
+      <li>❌ <b>−${PENALTY} points par mauvaise réponse.</b></li>
+      <li>⏱️ <b>Dès la question ${QUIZ_CHRONO_FROM}, un chrono de ${QUIZ_LIMIT} secondes par question se lance.</b> Temps écoulé = mauvaise réponse (−${PENALTY} pts).</li>
+      <li>🎁 Bonus de <b>50 points</b> pour un sans-faute. 7/8 : badge 🧠 Expert · 8/8 : badge 💯 Sans faute.</li>
+      <li>📜 <b>À la fin du quiz, ton certificat s’affiche avec ton score final.</b></li></ul>
+      ${S.quizBest>=0?`<p>🏆 Meilleur score : <b>${S.quizBest}/${QUIZ.length}</b></p>`:''}
+      <div class="row"><button class="btn" id="qS">${S.quizBest>=0?'Repasser le quiz':'Commencer le quiz'} ▶</button>${S.cert?'<button class="btn soft" id="qC">📜 Voir mon certificat</button>':''}</div></div>`;
+    $('#qS').onclick=startQuiz;
+    const qc=$('#qC');if(qc)qc.onclick=()=>show('certificate');
+    return;
+  }
+  const it=QZ.ord[QZ.i],n=QZ.i+1,chrono=n>=QUIZ_CHRONO_FROM,lastQ=n===QUIZ.length;
+  el.innerHTML=`<div class="card"><p class="eye">Question ${n} / ${QUIZ.length} · Score : ${QZ.sc} · Points : <span id="qPts">+${QZ.gain} / −${QZ.lost}</span></p>
+    <div class="prog"><div style="width:${QZ.i/QUIZ.length*100}%"></div></div>
+    ${chrono?`<div class="qchr"><div class="th"><span>⏱️ Chrono : <span id="qcT">${QUIZ_LIMIT}</span> s</span><small>Temps écoulé = mauvaise réponse</small></div><div class="tbar"><div class="tfill" id="qcF"></div></div></div>`
+      :(n===QUIZ_CHRONO_FROM-1?`<div class="note warn">⏱️ Attention : dès la prochaine question, un chrono de ${QUIZ_LIMIT} secondes se lance !</div>`:'')}
+    <div id="qzb"></div>
+    <div class="nav2"><span></span><button class="btn hid" id="qN">${lastQ?'Voir mon certificat 📜':'Question suivante →'}</button></div></div>`;
+  const ctrl=mcq($('#qzb'),it,{mode:'single',cb:(ok,info)=>{
+    clearInterval(QZ.iv);
+    if(ok){QZ.sc++;QZ.gain+=per;addPoints(per,'Quiz : bonne réponse');}
+    else{
+      QZ.lost+=info.lost;if(info.timeout)QZ.to++;
+      const g=it.options.find(x=>x.ok);QZ.errs.push({q:it.q,a:g.t,w:g.why,t:info.timeout});
+    }
+    if(info.fast){QZ.gain+=FAST_BONUS;QZ.fast++;}
+    $('#qPts').textContent=`+${QZ.gain} / −${QZ.lost}`;
+    const nb=$('#qN');nb.classList.remove('hid');nb.focus();
+  }});
+  /* Chrono par question, à partir de la question QUIZ_CHRONO_FROM */
+  if(chrono){
+    if(n===QUIZ_CHRONO_FROM){say(`⏱️ Le chrono démarre : ${QUIZ_LIMIT} secondes par question à partir de maintenant !`,'neutral');toast('⏱️ Chrono activé');}
+    const end=Date.now()+QUIZ_LIMIT*1000;
+    QZ.iv=setInterval(()=>{
+      const f=$('#qcF');if(!f){clearInterval(QZ.iv);return;}
+      const left=Math.max(0,end-Date.now());
+      $('#qcT').textContent=Math.ceil(left/1000);
+      f.style.width=(left/(QUIZ_LIMIT*10))+'%';
+      f.className='tfill'+(left<5000?' low':left<10000?' mid':'');
+      if(left<=0){clearInterval(QZ.iv);ctrl.expire();}
+    },100);
+  }
+  $('#qN').onclick=()=>{QZ.i++;if(QZ.i>=QUIZ.length)endQuiz();else{R.quiz();scrollTo(0,0);}};
+};
+function endQuiz(){
+  clearInterval(QZ.iv);QZ.on=false;
+  if(QZ.sc===QUIZ.length){QZ.gain+=50;addPoints(50,'Bonus sans-faute !');}
+  S.quizPlays++;S.quizBest=Math.max(S.quizBest,QZ.sc);
+  S.lastQuiz={sc:QZ.sc,gain:QZ.gain,lost:QZ.lost,fast:QZ.fast,to:QZ.to,errs:QZ.errs};
+  S.cert={name:S.cert?S.cert.name:S.name,date:today()};save();hud();
+  if(QZ.sc>=7)award('expert');
+  if(QZ.sc===QUIZ.length)award('parfait');
+  award('certifie');
+  /* Fin du parcours : affichage automatique du certificat avec le score final */
+  show('certificate');
+  say(`🏁 Quiz terminé : ${QZ.sc}/${QUIZ.length} ! Voici ton certificat avec ton score final 🎉`,'happy');
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+
+/* ================= 12. CERTIFICAT ================= */
+R.certificate=function rCert(){
+  const el=$('#sec-certificate'),L=S.lastQuiz,c=S.cert||{name:S.name,date:today()};
+  const qp=Math.round(Math.max(0,S.quizBest)/QUIZ.length*100);
+  const mention=qp>=90?'Mention Excellence':qp>=70?'Mention Très bien':qp>=50?'Mention Bien':'Participation';
+  el.innerHTML=`${L?`<div class="card noprint"><h1>🏁 Parcours terminé !</h1>
+    <p class="lead">Quiz final : <b>${L.sc}/${QUIZ.length}</b> · Points : <b style="color:#16a34a">+${L.gain}</b> / <b style="color:#dc2626">−${L.lost}</b>${L.sc===QUIZ.length?' (bonus sans-faute inclus 🎉)':''}</p>
+    <p class="sm mu">⚡ Bonus rapidité pendant ce quiz : ${L.fast} · ⏰ Temps écoulés : ${L.to} · Erreurs sur tout le parcours : ${S.errors} (−${PENALTY} pts chacune)</p>
+    ${L.errs.length?`<details><summary>📌 Questions à revoir (${L.errs.length})</summary><ul>${L.errs.map(e=>`<li><b>${e.q}</b>${e.t?' <i>(temps écoulé)</i>':''}<br>→ ${e.a}. ${e.w}</li>`).join('')}</ul></details>`:'<p>Aucune erreur au quiz, bravo ! 🎉</p>'}</div>`:''}
+  <div id="cert">
+    <div class="ct1">Transfert Quest · Certificat de réussite</div>
+    <h2 class="ct2">Certificat</h2><p style="font-style:italic;color:#64748b;margin:0">est fièrement décerné à</p>
+    <div class="cname">${esc(c.name)}</div>
+    <p>pour avoir terminé le parcours d’apprentissage<br><b>« Les échanges de fichiers : FTP, SFTP et API »</b></p>
+    <div class="final"><span>Score final</span><b>${S.points.toLocaleString('fr-FR')} points</b></div>
+    <div class="cstats"><div><b>${Math.max(0,S.quizBest)}/${QUIZ.length}</b><span>Quiz final (${qp} %)</span></div><div><b>${Math.max(0,S.sortBest)}/${CASES.length}</b><span>Défi Fichier ou API</span></div><div><b>${S.fast}</b><span>Bonus rapidité ⚡</span></div><div><b>${S.badges.length}/${BADGES.length}</b><span>Badges</span></div></div>
+    <p style="font-weight:bold;color:#b45309;margin:0">${mention}</p>
+    <div class="cfoot"><div>Délivré le<br><b>${c.date}</b></div><div class="seal"><span style="font-size:2rem">🔒</span>SFTP<br>MASTER</div><div style="text-align:right">Octet 🤖<br><i>Guide officiel</i></div></div>
+  </div>
+  <div class="card noprint">
+    <label class="lbl" for="cN">Nom affiché sur le certificat</label>
+    <div class="row" id="cRow"><input id="cN" class="inp" maxlength="40" value="${esc(c.name)}"><button class="btn soft" id="cG">✏️ Mettre à jour le nom</button></div>
+    <div class="row" style="margin-top:14px"><button class="btn" id="cP">🖨️ Imprimer / Enregistrer en PDF</button><button class="btn gh" id="cQ">📝 Repasser le quiz</button></div>
+    <p class="sm mu" style="margin-top:8px">Pour obtenir un PDF, choisis « Enregistrer au format PDF » comme imprimante, et active « Graphiques d’arrière-plan » pour garder les couleurs.</p></div>`;
+  $('#cG').onclick=()=>{
+    const n=$('#cN').value.trim();
+    if(!n){onWrong($('#cRow'),true);say('Il me faut un nom pour le certificat !','sad');return;}
+    S.cert={name:n,date:c.date};save();rCert();ding();say('Nom mis à jour sur ton certificat ✍️','happy');
+  };
+  $('#cP').onclick=()=>window.print();
+  $('#cQ').onclick=()=>show('quiz');
+};
+
+/* ================= 13. GLOSSAIRE (toujours accessible) ================= */
+function viewTerm(k){
+  if(S.gloss.includes(k))return;S.gloss.push(k);save();addPoints(5,'Nouveau terme : '+GLOSS[k].t);
+  if(S.gloss.length>=5)award('curieux');if(S.gloss.length>=Object.keys(GLOSS).length)award('encyclo');
+}
+R.glossary=function(){
+  const el=$('#sec-glossary'),keys=Object.keys(GLOSS).sort((a,b)=>GLOSS[a].t.localeCompare(GLOSS[b].t,'fr'));
+  el.innerHTML=`<div class="card"><h1>📖 Glossaire</h1><p>Clique sur un terme pour afficher sa définition. Termes consultés : <b id="gc">${S.gloss.length}</b>/${keys.length} (+5 pts par nouveau terme).</p></div>
+    <div class="glist">${keys.map(k=>`<div class="gi" data-k="${k}"><button class="gh2"><span>${GLOSS[k].t}</span><span class="seen">${S.gloss.includes(k)?'✓':'＋'}</span></button><div class="gd">${GLOSS[k].d}</div></div>`).join('')}</div>`;
+  $$('.gi',el).forEach(g=>$('.gh2',g).onclick=()=>{
+    g.classList.toggle('open');
+    if(g.classList.contains('open')){viewTerm(g.dataset.k);$('.seen',g).textContent='✓';$('#gc').textContent=S.gloss.length;}
+  });
+};
+/* Fenêtre de définition ouverte depuis un terme souligné (sans quitter la page en cours) */
+function openModal(k){const g=GLOSS[k];if(!g)return;$('#mT').textContent=g.t;$('#mD').textContent=g.d;$('#modal').classList.add('open');viewTerm(k);}
+function closeModal(){$('#modal').classList.remove('open');}
+document.addEventListener('click',e=>{const t=e.target.closest('.term');if(t)openModal(t.dataset.t);});
+$('#mX').onclick=closeModal;
+$('#modal').addEventListener('click',e=>{if(e.target.id==='modal')closeModal();});
+$('#mAll').onclick=()=>{closeModal();show('glossary');};
+
+/* ================= 14. BADGES (toujours accessibles) ================= */
+function rBadges(){
+  $('#sec-badges').innerHTML=`<div class="card"><h1>🏅 Tes badges</h1><p>${S.badges.length} / ${BADGES.length} débloqués · ${S.points} points. Chaque badge rapporte 25 points bonus.</p>
+    <div class="prog"><div style="width:${S.badges.length/BADGES.length*100}%"></div></div></div>
+    <div class="bgrid">${BADGES.map(b=>{const u=S.badges.includes(b.id);return `<div class="bc ${u?'un':'lo'}"><div class="ic">${b.ic}</div><h3>${b.n}</h3><p class="sm mu">${b.d}</p><b class="sm">${u?'✅ Débloqué':'🔒 À débloquer'}</b></div>`;}).join('')}</div>`;
+}
+R.badges=rBadges;
+
+/* ================= 15. INITIALISATION ================= */
+$('#sndBtn').onclick=()=>{S.sound=!S.sound;save();hud();if(S.sound)ding();};
+$('#rstBtn').onclick=()=>{if(confirm('Recommencer à zéro ? Tes points, badges et progression seront effacés.')){try{localStorage.removeItem(KEY);}catch(e){}location.reload();}};
+$('#bubX').onclick=()=>$('#mascot').classList.add('min');
+$('#msvg').addEventListener('click',()=>{S.clicks++;save();say('💡 '+pick(TIPS),'happy');if(S.clicks>=5)award('ami');});
+buildNav();hud();show('home');
+})();
+</script>
+</body>
+</html>
